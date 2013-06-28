@@ -42,9 +42,13 @@ bomb(M,N,[c(f(X, Y),Count)|Numbers],Grid, Blacks, Back):-X=\=M, X=\=0, Y=\=N,Y=\
 	destroy(X1,Y,Back2, Back3), destroy(X1,Y1,Back3,Back4), bomb(M,N,Numbers,Grid, Back4, Back). 
 
 %destroy(X,Y,Blacks,Back)
-destroy(_,_,_,_).
+destroy(_,_, [], []).
+destroy(X,Y,Blacks,Blacks) :- (not(member(f(X,Y), Blacks))).
+destroy(X,Y,[f(X,Y)|Blacks], Blacks).
+destroy(X,Y,[f(X1,Y1)|Blacks], [f(X1,Y1)|Back]) :- (X1=\=X; Y1=\=Y),member(f(X,Y), Blacks), destroy(X,Y, Blacks, Back).
 
 %allBlacks(+X,+Y, -Grid)
+%Macht ein volles Grid, ohne Abstufungen
 allBlacks(X,Y, []) :- ((X==Y, X==0);(X==0); (Y==0)).
 allBlacks(X,Y, [f(X,Y)|Grid]) :- X=\=0, Y=\=0, X1 is X-1, Y1 is Y-1,
 	allBlacks(X1,Y, Grid1), allBlacks(X,Y1,Grid2), union(Grid1, Grid2, Grid).
