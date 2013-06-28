@@ -21,6 +21,28 @@ range(X,Y,XX,YY) :- delta(DX,DY), XX is X+DX, YY is Y+DY.
 
 creek(M,N,Numbers,Blacks) :- write('Not yet implemented! ').
 
+%bomb(M,N, +Numbers, -Grid, +Blacks, -Back)
+%sucht sich klare Felder und weist diese
+bomb(_,_, [], [], _, _).
+bomb(_,_,[c(f(X, Y),Count)|Numbers],[c(f(X, Y),Count)|Grid], Blacks, Back) :- Count =\=0,
+	bomb(M,N, Numbers, Grid,Blacks, Back).
+%Alle Ecken
+bomb(M,N,[c(f(X, Y),Count)|Numbers],Grid, Blacks, Back):-((X==Y, X==0);(X==0, Y==N);(X==M,Y==0);(X==M,Y==N))
+	, Count==0, destroy(X,Y, Blacks, Back1), bomb(M,N,Numbers,Grid, Back1, Back). 
+%Alle Ränder
+bomb(M,N,[c(f(X, Y),Count)|Numbers], Grid, Blacks, Back) :- Count==0
+	,((X==0, Y>0, Y<N, X1 is X+1, Y1 is Y+1, destroy(X1,Y, Blacks, Back1), destroy(X1,Y1,Back1, Back))
+	;(X==M, Y>0, Y<N, Y1 is Y+1, destroy(X,Y, Blacks, Back1), destroy(X,Y1,Back1,Back))
+	;(Y==0, X>0, X<M, Y1 is Y+1, X1 is X+1, destroy(X,Y1, Blacks, Back1), destroy(X1,Y1,Back1,Back))
+	;(Y==N, X>0, X<M, X1 is X+1, destroy(X,Y,Blacks,Back1), destroy(X1,Y,Blacks,Back2)))
+	, bomb(M,N,Numbers,Grid,Back2,Back).
+%DernRest 
+bomb(M,N,[c(f(X, Y),Count)|Numbers],Grid, Blacks, Back):-X=\=M, X=\=0, Y=\=N,Y=\=0
+	, Count==0, X1 is X+1, Y1 is Y+1, destroy(X,Y, Blacks, Back1), destroy(X,Y1, Back1, Back2),
+	destroy(X1,Y,Back2, Back3), destroy(X1,Y1,Back3,Back4), bomb(M,N,Numbers,Grid, Back4, Back). 
+
+%destroy(X,Y,Blacks,Back)
+destroy(_,_,_,_).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Einige Eingaben mit ihren jeweiligen Loesungen                               %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
