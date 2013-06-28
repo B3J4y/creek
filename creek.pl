@@ -24,7 +24,7 @@ creek(M,N,Numbers,Blacks) :- write('Not yet implemented! ').
 %bomb(M,N, +Numbers, -Grid, +Blacks, -Back)
 %sucht sich klare Felder und weist diese
 bomb(_,_, [], [], _, _).
-bomb(_,_,[c(f(X, Y),Count)|Numbers],[c(f(X, Y),Count)|Grid], Blacks, Back) :- Count =\=0,
+bomb(M,N,[c(f(X, Y),Count)|Numbers],[c(f(X, Y),Count)|Grid], Blacks, Back) :- Count =\=0,
 	bomb(M,N, Numbers, Grid,Blacks, Back).
 %Alle Ecken
 bomb(M,N,[c(f(X, Y),Count)|Numbers],Grid, Blacks, Back):-((X==Y, X==0);(X==0, Y==N);(X==M,Y==0);(X==M,Y==N))
@@ -43,6 +43,16 @@ bomb(M,N,[c(f(X, Y),Count)|Numbers],Grid, Blacks, Back):-X=\=M, X=\=0, Y=\=N,Y=\
 
 %destroy(X,Y,Blacks,Back)
 destroy(_,_,_,_).
+
+%allBlacks(+X,+Y, -Grid)
+allBlacks(X,Y, []) :- ((X==Y, X==0);(X==0); (Y==0)).
+allBlacks(X,Y, [f(X,Y)|Grid]) :- X=\=0, Y=\=0, X1 is X-1, Y1 is Y-1,
+	allBlacks(X1,Y, Grid1), allBlacks(X,Y1,Grid2), union(Grid1, Grid2, Grid).
+	
+%union(+Liste, +Liste, - Vereinigung) 
+union([A|B], C, D) :- member(A,C), !, union(B,C,D).
+union([A|B], C, [A|D]) :- union(B,C,D).
+union([],Z,Z).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Einige Eingaben mit ihren jeweiligen Loesungen                               %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
