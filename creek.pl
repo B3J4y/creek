@@ -19,22 +19,25 @@ range(X,Y,XX,YY) :- delta(DX,DY), XX is X+DX, YY is Y+DY.
 % berechnet die schwarzen Felder ("Blacks") EINER Loesung fuer das durch "M",
 % "N" und "Numbers" beschriebene MxN-Gitter.
 
-creek(M,N,Numbers,Blacks) :- write('Not yet implemented! ').
+creek(M,N,Numbers,Blacks, Grid) :- allBlacks(M,N,AllBlacks), bomb(M,N,Numbers,Grid,AllBlacks, Blacks).
 
 %bomb(M,N, +Numbers, -Grid, +Blacks, -Back)
 %sucht sich klare Felder und weist diese
-bomb(_,_, [], [], _, _).
+bomb(_,_, [], [], Blacks, Blacks).
 bomb(M,N,[c(f(X, Y),Count)|Numbers],[c(f(X, Y),Count)|Grid], Blacks, Back) :- Count =\=0,
 	bomb(M,N, Numbers, Grid,Blacks, Back).
 %Alle Ecken
-bomb(M,N,[c(f(X, Y),Count)|Numbers],Grid, Blacks, Back):-((X==Y, X==0);(X==0, Y==N);(X==M,Y==0);(X==M,Y==N))
-	, Count==0, destroy(X,Y, Blacks, Back1), bomb(M,N,Numbers,Grid, Back1, Back). 
+bomb(M,N,[c(f(X, Y),Count)|Numbers],Grid, Blacks, Back):-Count==0,((X==Y, X==0, X1 is X+1, Y1 is Y+1, destroy(X1,Y1, Blacks, Back1))
+	;(X==0, Y==N, X1 is X+1, destroy(X1,Y, Blacks, Back1) )
+	;(X==M,Y==0, Y1 is Y+1, destroy(X,Y1,Blacks, Back1))
+	;(X==M,Y==N, destroy(X,Y, Blacks, Back1)))
+	, bomb(M,N,Numbers,Grid, Back1, Back). 
 %Alle Ränder
 bomb(M,N,[c(f(X, Y),Count)|Numbers], Grid, Blacks, Back) :- Count==0
-	,((X==0, Y>0, Y<N, X1 is X+1, Y1 is Y+1, destroy(X1,Y, Blacks, Back1), destroy(X1,Y1,Back1, Back))
-	;(X==M, Y>0, Y<N, Y1 is Y+1, destroy(X,Y, Blacks, Back1), destroy(X,Y1,Back1,Back))
-	;(Y==0, X>0, X<M, Y1 is Y+1, X1 is X+1, destroy(X,Y1, Blacks, Back1), destroy(X1,Y1,Back1,Back))
-	;(Y==N, X>0, X<M, X1 is X+1, destroy(X,Y,Blacks,Back1), destroy(X1,Y,Blacks,Back2)))
+	,((X==0, Y>0, Y<N, X1 is X+1, Y1 is Y+1, destroy(X1,Y, Blacks, Back1), destroy(X1,Y1,Back1, Back2))
+	;(X==M, Y>0, Y<N, Y1 is Y+1, destroy(X,Y, Blacks, Back1), destroy(X,Y1,Back1,Back2))
+	;(Y==0, X>0, X<M, Y1 is Y+1, X1 is X+1, destroy(X,Y1, Blacks, Back1), destroy(X1,Y1,Back1,Back2))
+	;(Y==N, X>0, X<M, X1 is X+1, destroy(X,Y,Blacks,Back1), destroy(X1,Y,Back1,Back2)))
 	, bomb(M,N,Numbers,Grid,Back2,Back).
 %DernRest 
 bomb(M,N,[c(f(X, Y),Count)|Numbers],Grid, Blacks, Back):-X=\=M, X=\=0, Y=\=N,Y=\=0
