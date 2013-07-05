@@ -19,7 +19,7 @@ range(X,Y,XX,YY) :- delta(DX,DY), XX is X+DX, YY is Y+DY.
 % berechnet die schwarzen Felder ("Blacks") EINER Loesung fuer das durch "M",
 % "N" und "Numbers" beschriebene MxN-Gitter.
 
-creek(M,N,Numbers,Blacks, Grid) :- allBlacks(M,N,AllBlacks), bomb(M,N,Numbers,Grid,AllBlacks, Blacks).
+creek(M,N,Numbers,Blacks, Grid) :- grid(M,N,AllBlacks), bomb(M,N,Numbers,Grid,AllBlacks, Blacks).
 
 %bomb(M,N, +Numbers, -Grid, +Blacks, -Back)
 %sucht sich klare Felder und weist diese
@@ -32,7 +32,7 @@ bomb(M,N,[c(f(X, Y),Count)|Numbers],Grid, Blacks, Back):-Count==0,((X==Y, X==0, 
 	;(X==M,Y==0, Y1 is Y+1, destroy(X,Y1,Blacks, Back1))
 	;(X==M,Y==N, destroy(X,Y, Blacks, Back1)))
 	, bomb(M,N,Numbers,Grid, Back1, Back). 
-%Alle Ränder
+%Alle Raender
 bomb(M,N,[c(f(X, Y),Count)|Numbers], Grid, Blacks, Back) :- Count==0
 	,((X==0, Y>0, Y<N, X1 is X+1, Y1 is Y+1, destroy(X1,Y, Blacks, Back1), destroy(X1,Y1,Back1, Back2))
 	;(X==M, Y>0, Y<N, Y1 is Y+1, destroy(X,Y, Blacks, Back1), destroy(X,Y1,Back1,Back2))
@@ -50,12 +50,16 @@ destroy(X,Y,Blacks,Blacks) :- (not(member(f(X,Y), Blacks))).
 destroy(X,Y,[f(X,Y)|Blacks], Blacks).
 destroy(X,Y,[f(X1,Y1)|Blacks], [f(X1,Y1)|Back]) :- (X1=\=X; Y1=\=Y),member(f(X,Y), Blacks), destroy(X,Y, Blacks, Back).
 
-%allBlacks(+X,+Y, -Grid)
+%grid(+X,+Y, -Grid)
 %Macht ein volles Grid, ohne Abstufungen
-allBlacks(X,Y, []) :- ((X==Y, X==0);(X==0); (Y==0)).
-allBlacks(X,Y, [f(X,Y)|Grid]) :- X=\=0, Y=\=0, X1 is X-1, Y1 is Y-1,
-	allBlacks(X1,Y, Grid1), allBlacks(X,Y1,Grid2), union(Grid1, Grid2, Grid).
-	
+grid(X,Y, []) :- ((X==Y, X==0);(X==0); (Y==0)).
+grid(X,Y, [p(f(X,Y),t)|Grid]) :- X=\=0, Y=\=0, X1 is X-1, Y1 is Y-1,
+	grid(X1,Y, Grid1), row(X,Y1,Grid2), union(Grid1, Grid2, Grid).
+
+%row(+X,+Y,-Row)
+row(X,Y,[]) :- ((X==Y, X==0);(X==0); (Y==0)).
+row(X,Y,[p(f(X,Y),t)|Grid]) :- Y1 is Y-1,row(X,Y1,Grid).
+
 %union(+Liste, +Liste, - Vereinigung) 
 union([A|B], C, D) :- member(A,C), !, union(B,C,D).
 union([A|B], C, [A|D]) :- union(B,C,D).
