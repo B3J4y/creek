@@ -19,30 +19,59 @@ range(X,Y,XX,YY) :- delta(DX,DY), XX is X+DX, YY is Y+DY.
 % berechnet die schwarzen Felder ("Blacks") EINER Loesung fuer das durch "M",
 % "N" und "Numbers" beschriebene MxN-Gitter.
 
-creek(M,N,Numbers,Blacks, Grid) :- grid(M,N,AllBlacks), bomb(M,N,Numbers,Grid,AllBlacks, Blacks).
+creek(M,N,Numbers,Blacks, Grid) :- myGrid(M,N,AllBlacks), bomb(M,N,Numbers,Grid,AllBlacks, Blacks).
 
 %bomb(M,N, +Numbers, -Grid, +Blacks, -Back)
-%sucht sich klare Felder und weist diese
+%sucht sich klare Felder und weist oder schwaerzt diese
 bomb(_,_, [], [], Blacks, Blacks).
-bomb(M,N,[c(f(X, Y),Count)|Numbers],[c(f(X, Y),Count)|Grid], Blacks, Back) :- Count =\=0,
+bomb(M,N,[c(f(X, Y),Count)|Numbers],[c(f(X, Y),Count)|Grid], Blacks, Back) :- Count>0, Count<4, X>0, X<M, Y>0, Y<N,
 	bomb(M,N, Numbers, Grid,Blacks, Back).
-%Alle Ecken
-bomb(M,N,[c(f(X, Y),Count)|Numbers],Grid, Blacks, Back):-Count==0,((X==Y, X==0, X1 is X+1, Y1 is Y+1, blackOrWhite(X1,Y1, Blacks, Back1))
-	;(X==0, Y==N, X1 is X+1, blackOrWhite(X1,Y, Blacks, Back1) )
-	;(X==M,Y==0, Y1 is Y+1, blackOrWhite(X,Y1,Blacks, Back1))
-	;(X==M,Y==N, blackOrWhite(X,Y, Blacks, Back1)))
+%Alle Ecken, black
+bomb(M,N,[c(f(X, Y),Count)|Numbers],Grid, Blacks, Back):-Count==1,((X==Y, X==0, X1 is X+1, Y1 is Y+1, blackOrWhite(X1,Y1, Blacks, Back1, b))
+	;(X==0, Y==N, X1 is X+1, blackOrWhite(X1,Y, Blacks, Back1, b) )
+	;(X==M,Y==0, Y1 is Y+1, blackOrWhite(X,Y1,Blacks, Back1, b))
+	;(X==M,Y==N, blackOrWhite(X,Y, Blacks, Back1, b)))
 	, bomb(M,N,Numbers,Grid, Back1, Back). 
-%Alle Raender
+%Alle Ecken, white
+bomb(M,N,[c(f(X, Y),Count)|Numbers],Grid, Blacks, Back):-Count==0,((X==Y, X==0, X1 is X+1, Y1 is Y+1, blackOrWhite(X1,Y1, Blacks, Back1, w))
+	;(X==0, Y==N, X1 is X+1, blackOrWhite(X1,Y, Blacks, Back1, w) )
+	;(X==M,Y==0, Y1 is Y+1, blackOrWhite(X,Y1,Blacks, Back1, w))
+	;(X==M,Y==N, blackOrWhite(X,Y, Blacks, Back1, w)))
+	, bomb(M,N,Numbers,Grid, Back1, Back). 
+%Alle Raender, black
+bomb(M,N,[c(f(X, Y),Count)|Numbers], Grid, Blacks, Back) :- Count==2
+	,((X==0, Y>0, Y<N, X1 is X+1, Y1 is Y+1, blackOrWhite(X1,Y, Blacks, Back1, b), blackOrWhite(X1,Y1,Back1, Back2, b))
+	;(X==M, Y>0, Y<N, Y1 is Y+1, blackOrWhite(X,Y, Blacks, Back1,b), blackOrWhite(X,Y1,Back1,Back2,b))
+	;(Y==0, X>0, X<M, Y1 is Y+1, X1 is X+1, blackOrWhite(X,Y1, Blacks, Back1,b), blackOrWhite(X1,Y1,Back1,Back2,b))
+	;(Y==N, X>0, X<M, X1 is X+1, blackOrWhite(X,Y,Blacks,Back1,b), blackOrWhite(X1,Y,Back1,Back2,b)))
+	, Back1\==Back2, bomb(M,N,Numbers,Grid,Back2,Back).
+%Alle Raender, white
 bomb(M,N,[c(f(X, Y),Count)|Numbers], Grid, Blacks, Back) :- Count==0
-	,((X==0, Y>0, Y<N, X1 is X+1, Y1 is Y+1, blackOrWhite(X1,Y, Blacks, Back1), blackOrWhite(X1,Y1,Back1, Back2))
-	;(X==M, Y>0, Y<N, Y1 is Y+1, blackOrWhite(X,Y, Blacks, Back1), blackOrWhite(X,Y1,Back1,Back2))
-	;(Y==0, X>0, X<M, Y1 is Y+1, X1 is X+1, blackOrWhite(X,Y1, Blacks, Back1), blackOrWhite(X1,Y1,Back1,Back2))
-	;(Y==N, X>0, X<M, X1 is X+1, blackOrWhite(X,Y,Blacks,Back1), blackOrWhite(X1,Y,Back1,Back2)))
-	, bomb(M,N,Numbers,Grid,Back2,Back).
-%DernRest 
+	,((X==0, Y>0, Y<N, X1 is X+1, Y1 is Y+1, blackOrWhite(X1,Y, Blacks, Back1,w), blackOrWhite(X1,Y1,Back1, Back2,w))
+	;(X==M, Y>0, Y<N, Y1 is Y+1, blackOrWhite(X,Y, Blacks, Back1,w), blackOrWhite(X,Y1,Back1,Back2,w))
+	;(Y==0, X>0, X<M, Y1 is Y+1, X1 is X+1, blackOrWhite(X,Y1, Blacks, Back1,w), blackOrWhite(X1,Y1,Back1,Back2,w))
+	;(Y==N, X>0, X<M, X1 is X+1, blackOrWhite(X,Y,Blacks,Back1,w), blackOrWhite(X1,Y,Back1,Back2,w)))
+	, Back1\==Back2, bomb(M,N,Numbers,Grid,Back2,Back).
+%Alle Raender, nothing
+bomb(M,N,[c(f(X, Y),Count)|Numbers], Grid, Blacks, Back) :- Count==1
+	,((X==0, Y>0, Y<N)
+	;(X==M, Y>0, Y<N)
+	;(Y==0, X>0, X<M)
+	;(Y==N, X>0))
+	, bomb(M,N,Numbers,Grid,Blacks,Back).
+%Der Rest, white 
 bomb(M,N,[c(f(X, Y),Count)|Numbers],Grid, Blacks, Back):-X=\=M, X=\=0, Y=\=N,Y=\=0
-	, Count==0, X1 is X+1, Y1 is Y+1, blackOrWhite(X,Y, Blacks, Back1), blackOrWhite(X,Y1, Back1, Back2),
-	blackOrWhite(X1,Y,Back2, Back3), blackOrWhite(X1,Y1,Back3,Back4), bomb(M,N,Numbers,Grid, Back4, Back). 
+	, Count==0, X1 is X+1, Y1 is Y+1, blackOrWhite(X,Y, Blacks, Back1,w), blackOrWhite(X,Y1, Back1, Back2,w),
+	blackOrWhite(X1,Y,Back2, Back3,w), blackOrWhite(X1,Y1,Back3,Back4,w),  Back1\==Back2, Back2\==Back3, Back3\==Back4,
+	bomb(M,N,Numbers,Grid, Back4, Back). 
+%Der Rest, black
+bomb(M,N,[c(f(X, Y),Count)|Numbers],Grid, Blacks, Back):-X=\=M, X=\=0, Y=\=N,Y=\=0
+	, Count==4, X1 is X+1, Y1 is Y+1, blackOrWhite(X,Y, Blacks, Back1,b), blackOrWhite(X,Y1, Back1, Back2,b),
+	blackOrWhite(X1,Y,Back2, Back3,b), blackOrWhite(X1,Y1,Back3,Back4,b),  Back1\==Back2, Back2\==Back3, Back3\==Back4,
+	bomb(M,N,Numbers,Grid, Back4, Back). 
+%Der Rest, nothing
+bomb(M,N,[c(f(X, Y),Count)|Numbers],Grid, Blacks, Back):-X=\=M, X=\=0, Y=\=N,Y=\=0
+	, Count>0, Count<4, bomb(M,N,Numbers,Grid, Blacks, Back). 
 
 %blackOrWhite(X,Y,Blacks,Back, Bow)
 blackOrWhite(_,_, [], [],_).
@@ -53,9 +82,9 @@ blackOrWhite(X,Y,[p(f(X1,Y1), T)|Blacks], [p(f(X1,Y1),T)|Back], Bow) :-
 
 %grid(+X,+Y, -Grid)
 %Macht ein volles Grid, ohne Abstufungen
-grid(X,Y, []) :- ((X==Y, X=<0);(X=<0); (Y=<0)).
-grid(X,Y, [p(f(X,Y),t)|Grid]) :- X>0, Y>0, X1 is X-1, Y1 is Y-1,
-	grid(X1,Y, Grid1), row(X,Y1,Grid2), union(Grid1, Grid2, Grid).
+myGrid(X,Y, []) :- ((X==Y, X=<0);(X=<0); (Y=<0)).
+myGrid(X,Y, [p(f(X,Y),t)|Grid]) :- X>0, Y>0, X1 is X-1, Y1 is Y-1,
+	myGrid(X1,Y, Grid1), row(X,Y1,Grid2), union(Grid1, Grid2, Grid).
 
 %row(+X,+Y,-Row)
 row(X,Y,[]) :- ((X==Y, X=<0);(X=<0); (Y=<0)).
