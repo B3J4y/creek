@@ -18,11 +18,56 @@ range(X,Y,XX,YY) :- delta(DX,DY), XX is X+DX, YY is Y+DY.
 % creek(+M,+N,+Numbers,-Blacks)
 % berechnet die schwarzen Felder ("Blacks") EINER Loesung fuer das durch "M",
 % "N" und "Numbers" beschriebene MxN-Gitter.
+creek(M,N,Numbers,SureGrid, SureNumbs) :- myGrid(M,N,WholeTGrid), iBomb(M,N,Numbers,Numbs,WholeTGrid, BombedGrid), 
+	sureshot(Numbs,SureNumbs,BombedGrid,SureGrid).
+%sureshot(+Numbs,-SureNumbs,+Grid,-SureGrid)
+sureshot([],[],Grid,Grid).
+sureshot([c(f(X, Y),Count)|Numbers],SureNumbs,Grid,SureGrid) :- Count==1,
+	bagof(p(f(X1,Y1),Numb),(range(X,Y,X1,Y1), member(p(f(X1,Y1),Numb),Grid)),RangedNumbs), countWoB(RangedNumbs,w,WhiteCount),
+	((WhiteCount==3, member(p(f(X2,Y2),t),RangedNumbs), blackOrWhite(X2,Y2,Grid,NewGrid,b));
+		(WhiteCount<3, countWoB(RangedNumbs,b,BlackCount),(
+			(BlackCount==1, listToElementBow(RangedNumbs,Grid,w,NewGrid));
+			(BlackCount==0, Grid=NewGrid)
+		)
+	)), sureshot(Numbers,SureNumbs,NewGrid,SureGrid).
+sureshot([c(f(X, Y),Count)|Numbers],SureNumbs,Grid,SureGrid) :- Count==2,
+	bagof(p(f(X1,Y1),Numb),(range(X,Y,X1,Y1), member(p(f(X1,Y1),Numb),Grid)),RangedNumbs), countWoB(RangedNumbs,w,WhiteCount),
+	((WhiteCount==2, countWoB(RangedNumbs,b,BlackCount));
+		(WhiteCount<2, countWoB(RangedNumbs,b,BlackCount),(
+			(BlackCount==2, listToElementBow(RangedNumbs,Grid,w,NewGrid));
+			(BlackCount<0, Grid=NewGrid)
+		)
+	)), sureshot(Numbers,SureNumbs,NewGrid,SureGrid).
+sureshot([c(f(X, Y),Count)|Numbers],SureNumbs,Grid,SureGrid) :- Count==3,
+	bagof(p(f(X1,Y1),Numb),(range(X,Y,X1,Y1), member(p(f(X1,Y1),Numb),Grid)),RangedNumbs), countWoB(RangedNumbs,w,WhiteCount),
+	((WhiteCount==1, listToElementBow(RangedNumbs,Grid,b,NewGrid));
+		(WhiteCount==0, countWoB(RangedNumbs,b,BlackCount),(
+			(BlackCount==3,  member(p(f(X2,Y2),t),RangedNumbs), blackOrWhite(X2,Y2,Grid,NewGrid,w));
+			(BlackCount<3, Grid=NewGrid)
+		)
+	)), sureshot(Numbers,SureNumbs,NewGrid,SureGrid).
 
-%creek(M,N,Numbers,Blacks, Grid) :- myGrid(M,N,AllBlacks), bomb(M,N,Numbers,Grid,AllBlacks, Blacks).
-creek(M,N,Numbers,Blacks, Grid) :- myGrid(M,N,AllBlacks), iBomb(M,N,Numbers,Grid,AllBlacks, Blacks).
+listToElementBow([],Grid,_,Grid).
+listToElementBow([p(f(X, Y),Count)|Numbers],Grid,Color,NewGrid):- Color==b, Count\==w, blackOrWhite(X,Y,Grid,Grid1,Color), 
+	listToElementBow(Numbers,Grid1,Color,NewGrid).
+listToElementBow([p(f(X, Y),Count)|Numbers],Grid,Color,NewGrid):- Color==w, Count\==b, blackOrWhite(X,Y,Grid,Grid1,Color), 
+	listToElementBow(Numbers,Grid1,Color,NewGrid).
+listToElementBow([p(f(_, _),Count)|Numbers],Grid,Color,NewGrid):- Color==b, Count==w, 
+	listToElementBow(Numbers,Grid,Color,NewGrid).
+listToElementBow([p(f(_, _),Count)|Numbers],Grid,Color,NewGrid):- Color==w, Count==b, 
+	listToElementBow(Numbers,Grid,Color,NewGrid).
+listToElementBow([p(f(_, _),Count)|Numbers],Grid,Color,NewGrid):- Count==Color, 
+	listToElementBow(Numbers,Grid,Color,NewGrid).
+%countWoB(+RangedNumbs,+Color,-Count)
+countWoB([],_,0).
+countWoB([p(f(_,_),Numb)|RangedNumbs],Color,Count):- Color==Numb, countWoB(RangedNumbs,Color,NewCount), Count is NewCount+1. 
+countWoB([p(f(_,_),Numb)|RangedNumbs],Color,Count):- Color\==Numb, countWoB(RangedNumbs,Color,Count).
 
-%iBomb(M,N,Numbers, NewNumbers, Grid, NewGrid) 
+%blackOrWhite(X,Y,Blacks,Back, Bow)
+blackOrWhite(X,Y,Grid,NewGrid,Bow):- delete(Grid, p(f(X,Y),_),Grid1),append([p(f(X,Y),Bow)], Grid1, NewGrid).
+
+%iBomb(M,N,Numbers, NewNumbers, Grid, NewGrid)
+%searches 100% sure fields on the playground and color them
 iBomb(_,_,[], [], Grid, Grid).
 %getting 0
 iBomb(M,N,[c(f(X, Y),Count)|Numbers], NewNumbers, Grid, NewGrid) :- Count==0,
@@ -44,10 +89,10 @@ iBomb(M,N,[c(f(X, Y),Count)|Numbers], NewNumbers, Grid, NewGrid) :- Count==0,
 %getting 1
 iBomb(M,N,[c(f(X, Y),Count)|Numbers], NewNumbers, Grid, NewGrid) :- Count==1,
 	%Alle Ecken 
-	((X==Y, X==0, X1 is X+1, Y1 is Y+1, blackOrWhite(X1,Y1, Grid, Res, s))
-	;(X==0, Y==N, X1 is X+1, blackOrWhite(X1,Y, Grid, Res, s) )
-	;(X==M,Y==0, Y1 is Y+1, blackOrWhite(X,Y1,Grid, Res, s))
-	;(X==M,Y==N, blackOrWhite(X,Y, Grid, Res, s))), 
+	((X==Y, X==0, X1 is X+1, Y1 is Y+1, blackOrWhite(X1,Y1, Grid, Res, b))
+	;(X==0, Y==N, X1 is X+1, blackOrWhite(X1,Y, Grid, Res, b) )
+	;(X==M,Y==0, Y1 is Y+1, blackOrWhite(X,Y1,Grid, Res, b))
+	;(X==M,Y==N, blackOrWhite(X,Y, Grid, Res, b))), 
 	iBomb(M,N,Numbers, NewNumbers, Res, NewGrid).
 %getting 2
 iBomb(M,N,[c(f(X, Y),Count)|Numbers], NewNumbers, Grid, NewGrid) :- Count==2,
@@ -74,10 +119,8 @@ iBomb(M,N,[c(f(X, Y),Count)|Numbers], [c(f(X, Y),Count)|NewNumbers], Grid, NewGr
 	(Count==2,(X>0, X<M, Y>0, Y<N));
 	(Count==3)), iBomb(M,N,Numbers, NewNumbers, Grid, NewGrid).
 
-%blackOrWhite(X,Y,Blacks,Back, Bow)
-blackOrWhite(X,Y,Grid,NewGrid,Bow):- delete(Grid, p(f(X,Y),_),Grid1),append([p(f(X,Y),Bow)], Grid1, NewGrid).
 
-%grid(+X,+Y, -Grid)
+%myGrid(+X,+Y, -Grid)
 %Macht ein volles Grid, ohne Abstufungen
 myGrid(X,Y, []) :- ((X==Y, X=<0);(X=<0); (Y=<0)).
 myGrid(X,Y, [p(f(X,Y),t)|Grid]) :- X>0, Y>0, X1 is X-1, Y1 is Y-1,
