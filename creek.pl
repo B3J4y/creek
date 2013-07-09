@@ -18,34 +18,38 @@ range(X,Y,XX,YY) :- delta(DX,DY), XX is X+DX, YY is Y+DY.
 % creek(+M,+N,+Numbers,-Blacks)
 % berechnet die schwarzen Felder ("Blacks") EINER Loesung fuer das durch "M",
 % "N" und "Numbers" beschriebene MxN-Gitter.
-creek(M,N,Numbers,SureGrid, SureNumbs) :- myGrid(M,N,WholeTGrid), iBomb(M,N,Numbers,Numbs,WholeTGrid, BombedGrid), 
-	sureshot(Numbs,SureNumbs,BombedGrid,SureGrid).
-%sureshot(+Numbs,-SureNumbs,+Grid,-SureGrid)
+creek(M,N,Numbers,SureGrid, SureNumbs) :- myGrid(M,N,WholeTGrid), iBomb(M,N,Numbers,Numbs,WholeTGrid, BombedGrid), insertAtEnd(f(x, x), Numbs, EndNumbers),
+	sureshot(EndNumbers,SureNumbs,BombedGrid,SureGrid).
+%sureshot(+Numbs,-SureNumbs,+Grid,-SureGrid, +Marker)
 sureshot([],[],Grid,Grid).
-sureshot([c(f(X, Y),Count)|Numbers],SureNumbs,Grid,SureGrid) :- Count==1,
+sureshot([f(x, x)|Numbers],Numbers,Grid,Grid).
+%Sureshots for 1
+sureshot([c(f(X, Y),Count)|Numbers],SureNumbs,Grid,SureGrid) :- Count==1,delete(Numbers, f(x,x), DeletedNumbers), insertAtEnd(f(x, x), DeletedNumbers, EndNumbers),
 	bagof(p(f(X1,Y1),Numb),(range(X,Y,X1,Y1), member(p(f(X1,Y1),Numb),Grid)),RangedNumbs), countWoB(RangedNumbs,w,WhiteCount),
-	((WhiteCount==3, member(p(f(X2,Y2),t),RangedNumbs), blackOrWhite(X2,Y2,Grid,NewGrid,b));
+	((WhiteCount==3, member(p(f(X2,Y2),t),RangedNumbs), blackOrWhite(X2,Y2,Grid,NewGrid,b),sureshot(EndNumbers,SureNumbs,NewGrid,SureGrid));
 		(WhiteCount<3, countWoB(RangedNumbs,b,BlackCount),(
-			(BlackCount==1, listToElementBow(RangedNumbs,Grid,w,NewGrid));
-			(BlackCount==0, Grid=NewGrid)
+			(BlackCount==1, listToElementBow(RangedNumbs,Grid,w,NewGrid),sureshot(EndNumbers,SureNumbs,NewGrid,SureGrid));
+			(BlackCount==0, Grid=NewGrid),insertAtEnd(c(f(X, Y),Count), Numbers, EndNumbs),sureshot(EndNumbs,SureNumbs,NewGrid,SureGrid)
 		)
-	)), sureshot(Numbers,SureNumbs,NewGrid,SureGrid).
-sureshot([c(f(X, Y),Count)|Numbers],SureNumbs,Grid,SureGrid) :- Count==2,
+	)).
+%Sureshots for 2
+sureshot([c(f(X, Y),Count)|Numbers],SureNumbs,Grid,SureGrid) :- Count==2,delete(Numbers, f(x,x), DeletedNumbers), insertAtEnd(f(x, x), DeletedNumbers, EndNumbers),
 	bagof(p(f(X1,Y1),Numb),(range(X,Y,X1,Y1), member(p(f(X1,Y1),Numb),Grid)),RangedNumbs), countWoB(RangedNumbs,w,WhiteCount),
-	((WhiteCount==2, countWoB(RangedNumbs,b,BlackCount));
+	((WhiteCount==2, listToElementBow(RangedNumbs,Grid,b,NewGrid),sureshot(EndNumbers,SureNumbs,NewGrid,SureGrid));
 		(WhiteCount<2, countWoB(RangedNumbs,b,BlackCount),(
-			(BlackCount==2, listToElementBow(RangedNumbs,Grid,w,NewGrid));
-			(BlackCount<0, Grid=NewGrid)
+			(BlackCount==2, listToElementBow(RangedNumbs,Grid,w,NewGrid),sureshot(EndNumbers,SureNumbs,NewGrid,SureGrid));
+			(BlackCount<2, Grid=NewGrid),insertAtEnd(c(f(X, Y),Count), Numbers, EndNumbs),sureshot(EndNumbs,SureNumbs,NewGrid,SureGrid)
 		)
-	)), sureshot(Numbers,SureNumbs,NewGrid,SureGrid).
-sureshot([c(f(X, Y),Count)|Numbers],SureNumbs,Grid,SureGrid) :- Count==3,
+	)).
+%Sureshots for 3
+sureshot([c(f(X, Y),Count)|Numbers],SureNumbs,Grid,SureGrid) :- Count==3,delete(Numbers, f(x,x), DeletedNumbers), insertAtEnd(f(x, x), DeletedNumbers, EndNumbers),
 	bagof(p(f(X1,Y1),Numb),(range(X,Y,X1,Y1), member(p(f(X1,Y1),Numb),Grid)),RangedNumbs), countWoB(RangedNumbs,w,WhiteCount),
-	((WhiteCount==1, listToElementBow(RangedNumbs,Grid,b,NewGrid));
+	((WhiteCount==1, listToElementBow(RangedNumbs,Grid,b,NewGrid),sureshot(EndNumbers,SureNumbs,NewGrid,SureGrid));
 		(WhiteCount==0, countWoB(RangedNumbs,b,BlackCount),(
-			(BlackCount==3,  member(p(f(X2,Y2),t),RangedNumbs), blackOrWhite(X2,Y2,Grid,NewGrid,w));
-			(BlackCount<3, Grid=NewGrid)
+			(BlackCount==3,  member(p(f(X2,Y2),t),RangedNumbs), blackOrWhite(X2,Y2,Grid,NewGrid,w)),sureshot(EndNumbers,SureNumbs,NewGrid,SureGrid);
+			(BlackCount<3, Grid=NewGrid),insertAtEnd(c(f(X, Y),Count), Numbers, EndNumbs),sureshot(EndNumbs,SureNumbs,NewGrid,SureGrid)
 		)
-	)), sureshot(Numbers,SureNumbs,NewGrid,SureGrid).
+	)).
 
 listToElementBow([],Grid,_,Grid).
 listToElementBow([p(f(X, Y),Count)|Numbers],Grid,Color,NewGrid):- Color==b, Count\==w, blackOrWhite(X,Y,Grid,Grid1,Color), 
@@ -119,6 +123,8 @@ iBomb(M,N,[c(f(X, Y),Count)|Numbers], [c(f(X, Y),Count)|NewNumbers], Grid, NewGr
 	(Count==2,(X>0, X<M, Y>0, Y<N));
 	(Count==3)), iBomb(M,N,Numbers, NewNumbers, Grid, NewGrid).
 
+insertAtEnd(X,[ ],[X]).
+insertAtEnd(X,[H|T],[H|Z]) :- insertAtEnd(X,T,Z). 
 
 %myGrid(+X,+Y, -Grid)
 %Macht ein volles Grid, ohne Abstufungen
