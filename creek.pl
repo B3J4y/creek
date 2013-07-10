@@ -18,40 +18,52 @@ range(X,Y,XX,YY) :- delta(DX,DY), XX is X+DX, YY is Y+DY.
 % creek(+M,+N,+Numbers,-Blacks)
 % berechnet die schwarzen Felder ("Blacks") EINER Loesung fuer das durch "M",
 % "N" und "Numbers" beschriebene MxN-Gitter.
-creek(M,N,Numbers,SureGrid, SureNumbs) :- myGrid(M,N,WholeTGrid), iBomb(M,N,Numbers,Numbs,WholeTGrid, BombedGrid), insertAtEnd(f(x, x), Numbs, EndNumbers),
-	sureshot(EndNumbers,SureNumbs,BombedGrid,SureGrid), whiteTs(SureGrid,SureNumbs,WhitedGrid).
+creek(M,N,Numbers,WeightedGrid, SureNumbs) :- myGrid(M,N,WholeTGrid), iBomb(M,N,Numbers,Numbs,WholeTGrid, BombedGrid), insertAtEnd(f(x, x), Numbs, EndNumbers),
+	sureshot(EndNumbers,SureNumbs,BombedGrid,SureGrid), whiteTs(SureGrid,SureNumbs,WhitedGrid), weightFields(M,N,SureNumbs,WhitedGrid,WeightedGrid).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Workplace
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%whiteTs(+Grid,+Numbs,-NewGrid)
-whiteTs(Grid,_,Grid):-not(member(p(f(_,_),t),Grid)).
-whiteTs(Grid,Numbs,NewGrid):-bagof(p(f(X,Y),t), (member(p(f(X,Y),t),Grid), not(rangeInNumbs(p(f(X,Y),t),Numbs)), whiteNeighbour(p(f(X,Y),t),Grid)),WhiteMyTs), 
-	length(WhiteMyTs, I), ((I>0,listToElementBow(WhiteMyTs, Grid, w, Grid1), whiteTs(Grid1,Numbs,NewGrid))
-	;(I==0, NewGrid=Grid)).
-whiteTs(Grid,Numbs,Grid):-not(bagof(p(f(X,Y),t), (member(p(f(X,Y),t),Grid), not(rangeInNumbs(p(f(X,Y),t),Numbs)), whiteNeighbour(p(f(X,Y),t),Grid)),WhiteMyTs)).
 
-%whiteNeighbour(+Element,Grid)
-whiteNeighbour(p(f(X,Y),_),Grid) :-X1 is X-1, X2 is X+1, Y1 is Y-1, Y2 is Y+1, 
-	(member(p(f(X,Y1),w),Grid)
-	;member(p(f(X,Y2),w),Grid)
-	;member(p(f(X1,Y),w),Grid)
-	;member(p(f(X2,Y),w),Grid)).
+%weightFields(+M,+N,+Numbers,+Grid,-Weightedgrid)
+%All fields which belongs to a Number get a weight
+weightFields(_,_,[],Grid,Grid).
+weightFields(M,N,[c(f(X,Y),D)|Numbers],Grid,WeightedGrid):-bagof(p(f(X1,Y1),T),(range(X,Y,X1,Y1), member(p(f(X1,Y1),T),Grid)),NumbFields),
+	numbToFields(M,N,D,NumbFields,Grid,NewGrid), weightFields(M,N,Numbers,NewGrid,WeightedGrid).
 
-%rangeInNumbs(+Element,+Numbs)
-rangeInNumbs(p(f(X,Y),_),Numbs):- member(c(f(X,Y),_),Numbs).
-rangeInNumbs(p(f(X,Y),_),Numbs):- not(member(c(f(X,Y),_),Numbs)),X1 is X-1, Y1 is Y-1, (member(c(f(X1,Y),_),Numbs);
-	member(c(f(X,Y1),_),Numbs);member(c(f(X1,Y1),_),Numbs)).
+%numbToFields(+M,+N,+Numb,+NumbFields,+Grid,-NewGrid)
+%get a Field and connect it to its weight
+numbToFields(_,_,_,[],Grid,Grid).
+numbToFields(M,N,D,[p(f(X,Y),T)|NumbFields],Grid,NewGrid):-T==t, 
+	bagof(Neighbour,(neighbour(p(f(X,Y),T),Grid,Neighbour)),Neighbours), countWoB(Neighbours,w,WhiteCount),
+	countWoB(Neighbours,b,BlackCount), length(Neighbours, Fields), Res is 4-Fields+BlackCount-WhiteCount,
+	blackOrWhite(X,Y,Grid,Grid1, w(D,Res)), numbToFields(M,N,D,NumbFields,Grid1,NewGrid).
+numbToFields(M,N,D,[p(f(X,Y),w(WX,WY))|NumbFields],Grid,NewGrid):- 
+	WR is D+WX,blackOrWhite(X,Y,Grid,Grid1, w(WR,WY)), numbToFields(M,N,D,NumbFields,Grid1,NewGrid).
+numbToFields(M,N,D,[p(f(_,_),T)|NumbFields],Grid,NewGrid):-(T==b;T==w),numbToFields(M,N,D,NumbFields,Grid,NewGrid).
+
+%neighbour(+Field,+Grid,-Neighbour)
+%Find all neighbour Fields
+neighbour(p(f(X,Y),_),Grid,p(f(RX,RY),T)) :-X1 is X-1, X2 is X+1, Y1 is Y-1, Y2 is Y+1, 
+	((member(p(f(X,Y1),T),Grid), RX=X,RY=Y1)
+	;(member(p(f(X,Y2),T),Grid), RX=X,RY=Y2)
+	;(member(p(f(X1,Y),T),Grid), RX=X1,RY=Y)
+	;(member(p(f(X2,Y),T),Grid), RX=X2,RY=Y)).
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % done predicates, ordered alphabetically
 %countWoB(+RangedNumbs,+Color,-Count)
-%blackOrWhite(+X,+Y,+Element,-Back, +Bow)
+%blackOrWhite(+X,+Y,+Grid,-Back, +Bow)
 %iBomb(M,N,Numbers, NewNumbers, Grid, NewGrid)
 %insertAtEnd(+Element,+List,-NewList)
 %listToElementBow(+Numbers,+Grid,+Color,-NewGrid)
 %myGrid(+X,+Y, -Grid)
+%rangeInNumbs(+Element,+Numbs,-Numb)
 %row(+X,+Y,-Row)
 %sureshot(+Numbs,-SureNumbs,+Grid,-SureGrid, +Marker)
-%union(+Liste, +Liste, - Vereinigung) 
+%union(+Liste, +Liste, - Vereinigung)
+%whiteNeighbour(+Element,Grid)
+%whiteTs(+Grid,+Numbs,-NewGrid)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %countWoB(+RangedNumbs,+Color,-Count)
 countWoB([],_,0).
@@ -135,6 +147,12 @@ myGrid(X,Y, []) :- ((X==Y, X=<0);(X=<0); (Y=<0)).
 myGrid(X,Y, [p(f(X,Y),t)|Grid]) :- X>0, Y>0, X1 is X-1, Y1 is Y-1,
 	myGrid(X1,Y, Grid1), row(X,Y1,Grid2), union(Grid1, Grid2, Grid).
 
+%rangeInNumbs(+Element,+Numbs, -Numb)
+%Is in the range of my Field a Number?
+rangeInNumbs(p(f(X,Y),_),Numbs, c(f(X,Y),T)):- member(c(f(X,Y),T),Numbs).
+rangeInNumbs(p(f(X,Y),_),Numbs, c(f(A,B),T)):- not(member(c(f(X,Y),_),Numbs)),X1 is X-1, Y1 is Y-1, ((member(c(f(X1,Y),T),Numbs), X1=A, Y=B);
+	(member(c(f(X,Y1),T),Numbs), X=A,Y1=B);(member(c(f(X1,Y1),_),Numbs),X1=A,Y1=B)).
+
 %row(+X,+Y,-Row)
 row(X,Y,[]) :- ((X==Y, X=<0);(X=<0); (Y=<0)).
 row(X,Y,[p(f(X,Y),t)|Grid]) :-Y>0, Y1 is Y-1,row(X,Y1,Grid).
@@ -175,6 +193,23 @@ sureshot([c(f(X, Y),Count)|Numbers],SureNumbs,Grid,SureGrid) :- Count==3,delete(
 union([A|B], C, D) :- member(A,C), !, union(B,C,D).
 union([A|B], C, [A|D]) :- union(B,C,D).
 union([],Z,Z).
+
+%whiteNeighbour(+Element,Grid)
+%searches for white fields in the neighbourhood
+whiteNeighbour(p(f(X,Y),_),Grid) :-X1 is X-1, X2 is X+1, Y1 is Y-1, Y2 is Y+1, 
+	(member(p(f(X,Y1),w),Grid)
+	;member(p(f(X,Y2),w),Grid)
+	;member(p(f(X1,Y),w),Grid)
+	;member(p(f(X2,Y),w),Grid)).
+
+%whiteTs(+Grid,+Numbs,-NewGrid)
+%White all Ts which have whites as a neighbour
+whiteTs(Grid,_,Grid):-not(member(p(f(_,_),t),Grid)).
+whiteTs(Grid,Numbs,NewGrid):-bagof(p(f(X,Y),t), (member(p(f(X,Y),t),Grid), not(rangeInNumbs(p(f(X,Y),t),Numbs,_)), whiteNeighbour(p(f(X,Y),t),Grid)),WhiteMyTs), 
+	length(WhiteMyTs, I), ((I>0,listToElementBow(WhiteMyTs, Grid, w, Grid1), whiteTs(Grid1,Numbs,NewGrid))
+	;(I==0, NewGrid=Grid)).
+whiteTs(Grid,Numbs,Grid):-not(bagof(p(f(X,Y),t), (member(p(f(X,Y),t),Grid), not(rangeInNumbs(p(f(X,Y),t),Numbs,_)), whiteNeighbour(p(f(X,Y),t),Grid)),_)).
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Einige Eingaben mit ihren jeweiligen Loesungen                               %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
