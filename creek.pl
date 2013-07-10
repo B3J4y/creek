@@ -18,37 +18,25 @@ range(X,Y,XX,YY) :- delta(DX,DY), XX is X+DX, YY is Y+DY.
 % creek(+M,+N,+Numbers,-Blacks)
 % berechnet die schwarzen Felder ("Blacks") EINER Loesung fuer das durch "M",
 % "N" und "Numbers" beschriebene MxN-Gitter.
-creek(M,N,Numbers,WeightedGrid, SureNumbs) :- myGrid(M,N,WholeTGrid), iBomb(M,N,Numbers,Numbs,WholeTGrid, BombedGrid), insertAtEnd(f(x, x), Numbs, EndNumbers),
-	sureshot(EndNumbers,SureNumbs,BombedGrid,SureGrid), whiteTs(SureGrid,SureNumbs,WhitedGrid), weightFields(M,N,SureNumbs,WhitedGrid,WeightedGrid).
+
+creek(+M,+N,+Numbers,-Blacks):-myGrid(M,N,WholeTGrid), iBomb(M,N,Numbers,Numbs,WholeTGrid, BombedGrid), loopMyGrid()
+creek(M,N,Numbers,ColoredMax, SureNumbs) :- myGrid(M,N,WholeTGrid), iBomb(M,N,Numbers,Numbs,WholeTGrid, BombedGrid),insertAtEnd(f(x, x), Numbs, EndNumbers),
+	sureshot(EndNumbers,SureNumbs,BombedGrid,SureGrid), whiteTs(SureGrid,SureNumbs,WhitedGrid), 
+	weightFields(M,N,SureNumbs,WhitedGrid,WeightedGrid), colorMaxElements(WeightedGrid,ColoredMax).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Workplace
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%colorMaxElements(+Grid,-Grid)
+colorMaxElements(Grid,NewGrid):- bagof(p(f(FX,FY),w(WX,WY)),(member(p(f(FX,FY),w(WX,WY)),Grid)), WeightedList),
+	maxInList(WeightedList,Max),
+	bagof(p(f(FX2,FY2),w(WX2,WY2)),(member(p(f(FX2,FY2),w(WX2,WY2)),WeightedList), Temp is WX2+WY2, Temp==Max), MaxList),
+	((member(p(f(FX3,FY3),w(WX3,WY3)),MaxList),WY3==0);(member(p(f(FX3,FY3),w(WX3,WY3)),MaxList))),blackOrWhite(FX3,FY3,Grid, NewGrid,b).
+%maxInList(+Grid, -Maximum)
+maxInList([],0).
+maxInList([p(f(_,_),w(X,Y))|Grid],Max):- maxInList(Grid,Down), T is X+Y, max(Down,T,Max).
 
-%weightFields(+M,+N,+Numbers,+Grid,-Weightedgrid)
-%All fields which belongs to a Number get a weight
-weightFields(_,_,[],Grid,Grid).
-weightFields(M,N,[c(f(X,Y),D)|Numbers],Grid,WeightedGrid):-bagof(p(f(X1,Y1),T),(range(X,Y,X1,Y1), member(p(f(X1,Y1),T),Grid)),NumbFields),
-	numbToFields(M,N,D,NumbFields,Grid,NewGrid), weightFields(M,N,Numbers,NewGrid,WeightedGrid).
-
-%numbToFields(+M,+N,+Numb,+NumbFields,+Grid,-NewGrid)
-%get a Field and connect it to its weight
-numbToFields(_,_,_,[],Grid,Grid).
-numbToFields(M,N,D,[p(f(X,Y),T)|NumbFields],Grid,NewGrid):-T==t, 
-	bagof(Neighbour,(neighbour(p(f(X,Y),T),Grid,Neighbour)),Neighbours), countWoB(Neighbours,w,WhiteCount),
-	countWoB(Neighbours,b,BlackCount), length(Neighbours, Fields), Res is 4-Fields+BlackCount-WhiteCount,
-	blackOrWhite(X,Y,Grid,Grid1, w(D,Res)), numbToFields(M,N,D,NumbFields,Grid1,NewGrid).
-numbToFields(M,N,D,[p(f(X,Y),w(WX,WY))|NumbFields],Grid,NewGrid):- 
-	WR is D+WX,blackOrWhite(X,Y,Grid,Grid1, w(WR,WY)), numbToFields(M,N,D,NumbFields,Grid1,NewGrid).
-numbToFields(M,N,D,[p(f(_,_),T)|NumbFields],Grid,NewGrid):-(T==b;T==w),numbToFields(M,N,D,NumbFields,Grid,NewGrid).
-
-%neighbour(+Field,+Grid,-Neighbour)
-%Find all neighbour Fields
-neighbour(p(f(X,Y),_),Grid,p(f(RX,RY),T)) :-X1 is X-1, X2 is X+1, Y1 is Y-1, Y2 is Y+1, 
-	((member(p(f(X,Y1),T),Grid), RX=X,RY=Y1)
-	;(member(p(f(X,Y2),T),Grid), RX=X,RY=Y2)
-	;(member(p(f(X1,Y),T),Grid), RX=X1,RY=Y)
-	;(member(p(f(X2,Y),T),Grid), RX=X2,RY=Y)).
-
+%max(+Numb1,+Numb2,-Res)
+max(I,J,R):-((I>J,R=I);(J>I,R=J);(I==J,R=J)).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % done predicates, ordered alphabetically
@@ -58,10 +46,13 @@ neighbour(p(f(X,Y),_),Grid,p(f(RX,RY),T)) :-X1 is X-1, X2 is X+1, Y1 is Y-1, Y2 
 %insertAtEnd(+Element,+List,-NewList)
 %listToElementBow(+Numbers,+Grid,+Color,-NewGrid)
 %myGrid(+X,+Y, -Grid)
+%neighbour(+Field,+Grid,-Neighbour)
+%numbToFields(+M,+N,+Numb,+NumbFields,+Grid,-NewGrid)
 %rangeInNumbs(+Element,+Numbs,-Numb)
 %row(+X,+Y,-Row)
 %sureshot(+Numbs,-SureNumbs,+Grid,-SureGrid, +Marker)
 %union(+Liste, +Liste, - Vereinigung)
+%weightFields(+M,+N,+Numbers,+Grid,-Weightedgrid)
 %whiteNeighbour(+Element,Grid)
 %whiteTs(+Grid,+Numbs,-NewGrid)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -147,6 +138,25 @@ myGrid(X,Y, []) :- ((X==Y, X=<0);(X=<0); (Y=<0)).
 myGrid(X,Y, [p(f(X,Y),t)|Grid]) :- X>0, Y>0, X1 is X-1, Y1 is Y-1,
 	myGrid(X1,Y, Grid1), row(X,Y1,Grid2), union(Grid1, Grid2, Grid).
 
+%neighbour(+Field,+Grid,-Neighbour)
+%Find all neighbour Fields
+neighbour(p(f(X,Y),_),Grid,p(f(RX,RY),T)) :-X1 is X-1, X2 is X+1, Y1 is Y-1, Y2 is Y+1, 
+	((member(p(f(X,Y1),T),Grid), RX=X,RY=Y1)
+	;(member(p(f(X,Y2),T),Grid), RX=X,RY=Y2)
+	;(member(p(f(X1,Y),T),Grid), RX=X1,RY=Y)
+	;(member(p(f(X2,Y),T),Grid), RX=X2,RY=Y)).
+
+%numbToFields(+M,+N,+Numb,+NumbFields,+Grid,-NewGrid)
+%get a Field and connect it to its weight
+numbToFields(_,_,_,[],Grid,Grid).
+numbToFields(M,N,D,[p(f(X,Y),T)|NumbFields],Grid,NewGrid):-T==t, 
+	bagof(Neighbour,(neighbour(p(f(X,Y),T),Grid,Neighbour)),Neighbours), countWoB(Neighbours,w,WhiteCount),
+	countWoB(Neighbours,b,BlackCount), length(Neighbours, Fields), Res is 4-Fields+BlackCount-WhiteCount,
+	blackOrWhite(X,Y,Grid,Grid1, w(D,Res)), numbToFields(M,N,D,NumbFields,Grid1,NewGrid).
+numbToFields(M,N,D,[p(f(X,Y),w(WX,WY))|NumbFields],Grid,NewGrid):- 
+	WR is D+WX,blackOrWhite(X,Y,Grid,Grid1, w(WR,WY)), numbToFields(M,N,D,NumbFields,Grid1,NewGrid).
+numbToFields(M,N,D,[p(f(_,_),T)|NumbFields],Grid,NewGrid):-(T==b;T==w),numbToFields(M,N,D,NumbFields,Grid,NewGrid).
+
 %rangeInNumbs(+Element,+Numbs, -Numb)
 %Is in the range of my Field a Number?
 rangeInNumbs(p(f(X,Y),_),Numbs, c(f(X,Y),T)):- member(c(f(X,Y),T),Numbs).
@@ -193,6 +203,12 @@ sureshot([c(f(X, Y),Count)|Numbers],SureNumbs,Grid,SureGrid) :- Count==3,delete(
 union([A|B], C, D) :- member(A,C), !, union(B,C,D).
 union([A|B], C, [A|D]) :- union(B,C,D).
 union([],Z,Z).
+
+%weightFields(+M,+N,+Numbers,+Grid,-Weightedgrid)
+%All fields which belongs to a Number get a weight
+weightFields(_,_,[],Grid,Grid).
+weightFields(M,N,[c(f(X,Y),D)|Numbers],Grid,WeightedGrid):-bagof(p(f(X1,Y1),T),(range(X,Y,X1,Y1), member(p(f(X1,Y1),T),Grid)),NumbFields),
+	numbToFields(M,N,D,NumbFields,Grid,NewGrid), weightFields(M,N,Numbers,NewGrid,WeightedGrid).
 
 %whiteNeighbour(+Element,Grid)
 %searches for white fields in the neighbourhood
