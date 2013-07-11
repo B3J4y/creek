@@ -19,14 +19,35 @@ range(X,Y,XX,YY) :- delta(DX,DY), XX is X+DX, YY is Y+DY.
 % berechnet die schwarzen Felder ("Blacks") EINER Loesung fuer das durch "M",
 % "N" und "Numbers" beschriebene MxN-Gitter.
 
-creek(+M,+N,+Numbers,-Blacks):-myGrid(M,N,WholeTGrid), iBomb(M,N,Numbers,Numbs,WholeTGrid, BombedGrid), loopMyGrid()
-creek(M,N,Numbers,ColoredMax, SureNumbs) :- myGrid(M,N,WholeTGrid), iBomb(M,N,Numbers,Numbs,WholeTGrid, BombedGrid),insertAtEnd(f(x, x), Numbs, EndNumbers),
-	sureshot(EndNumbers,SureNumbs,BombedGrid,SureGrid), whiteTs(SureGrid,SureNumbs,WhitedGrid), 
-	weightFields(M,N,SureNumbs,WhitedGrid,WeightedGrid), colorMaxElements(WeightedGrid,ColoredMax).
+creek(M,N,Numbers,Blacks):-myGrid(M,N,WholeTGrid), iBomb(M,N,Numbers,Numbs,WholeTGrid, BombedGrid), loopMyGrid(Numbs,BombedGrid, NewGrid),
+	bagof(f(X,Y),member(p(f(X,Y),b),NewGrid), Blacks). %gridToBlack
+
+%loopMyGrid([],Grid, Grid):-not(bagof(p(f(X,Y),t),member(p(f(X,Y),t),Grid),_)).
+loopMyGrid([],Grid, NewGrid):-whiteTs(Grid,[],WhitedGrid), 
+	((bagof(p(f(X,Y),T),(member(p(f(X,Y),t),WhitedGrid)),Ts),blackSureFields(Ts,WhitedGrid,NewGrid));
+		(not(bagof(p(f(X,Y),T),(member(p(f(X,Y),t),WhitedGrid)),_)), WhitedGrid=NewGrid)).
+loopMyGrid(Numbers,Grid, NewGrid) :- length(Numbers,I), I>0,insertAtEnd(f(x, x), Numbers, EndNumbers),
+	sureshot(EndNumbers,SureNumbs,Grid,SureGrid), whiteTs(SureGrid,SureNumbs,WhitedGrid), 
+	weightFields(SureNumbs,WhitedGrid,WeightedGrid), colorMaxElements(WeightedGrid,ColoredMax),
+	((bagof(p(f(X,Y),t),(member(p(f(X,Y),t),ColoredMax)),Ts),blackSureFields(Ts,ColoredMax,BlackGrid));
+		(not(bagof(p(f(X,Y),t),(member(p(f(X,Y),t),ColoredMax)),_)), BlackGrid=ColoredMax))
+	, weightedToT(BlackGrid,NewTGrid),loopMyGrid(SureNumbs,NewTGrid, NewGrid).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Workplace
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%weightedToT(List,-List)
+weightedToT([],[]).
+weightedToT([p(f(X,Y),T)|List],[p(f(X,Y),T)|NewList]) :- atom(T),weightedToT(List,NewList).
+weightedToT([p(f(X,Y),w(_,_))|List],[p(f(X,Y),t)|NewList]):-weightedToT(List,NewList).
+
+%blackSureFields(List,+Grid,-Liste)
+
+blackSureFields([],Grid,Grid).
+blackSureFields(List,Grid,Grid):- not(bagof(p(f(X,Y),t),(member(p(f(X,Y),t),List),blackNeighbour(p(f(X,Y),t),Grid)),_)).
+blackSureFields(List,Grid,NewGrid):- bagof(p(f(X,Y),t),(member(p(f(X,Y),t),List),blackNeighbour(p(f(X,Y),t),Grid)),Blacks),
+	listToElementBow(Blacks,Grid,b,NewGrid).
 %colorMaxElements(+Grid,-Grid)
+colorMaxElements(Grid,Grid):- not(bagof(p(f(FX,FY),w(WX,WY)),(member(p(f(FX,FY),w(WX,WY)),Grid)), _)).
 colorMaxElements(Grid,NewGrid):- bagof(p(f(FX,FY),w(WX,WY)),(member(p(f(FX,FY),w(WX,WY)),Grid)), WeightedList),
 	maxInList(WeightedList,Max),
 	bagof(p(f(FX2,FY2),w(WX2,WY2)),(member(p(f(FX2,FY2),w(WX2,WY2)),WeightedList), Temp is WX2+WY2, Temp==Max), MaxList),
@@ -47,22 +68,28 @@ max(I,J,R):-((I>J,R=I);(J>I,R=J);(I==J,R=J)).
 %listToElementBow(+Numbers,+Grid,+Color,-NewGrid)
 %myGrid(+X,+Y, -Grid)
 %neighbour(+Field,+Grid,-Neighbour)
-%numbToFields(+M,+N,+Numb,+NumbFields,+Grid,-NewGrid)
+%numbToFields(+Numb,+NumbFields,+Grid,-NewGrid)
 %rangeInNumbs(+Element,+Numbs,-Numb)
 %row(+X,+Y,-Row)
 %sureshot(+Numbs,-SureNumbs,+Grid,-SureGrid, +Marker)
 %union(+Liste, +Liste, - Vereinigung)
-%weightFields(+M,+N,+Numbers,+Grid,-Weightedgrid)
+%weightFields(+Numbers,+Grid,-Weightedgrid)
 %whiteNeighbour(+Element,Grid)
 %whiteTs(+Grid,+Numbs,-NewGrid)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%whiteNeighbour(+Element,Grid)
+%searches for white fields in the neighbourhood
+blackNeighbour(p(f(X,Y),T),Grid) :-bagof(Neighbour,neighbour(p(f(X,Y),T),Grid,Neighbour),Neighbours), 
+	bagof(p(f(X1,Y1),b),member(p(f(X1,Y1),b),Neighbours),Blacks), length(Blacks,B), length(Neighbours,N), N==B.
+
+%blackOrWhite(X,Y,Blacks,Back, Bow)
+blackOrWhite(X,Y,Grid,NewGrid,Bow):- delete(Grid, p(f(X,Y),_),Grid1),append([p(f(X,Y),Bow)], Grid1, NewGrid).
+
 %countWoB(+RangedNumbs,+Color,-Count)
 countWoB([],_,0).
 countWoB([p(f(_,_),Numb)|RangedNumbs],Color,Count):- Color==Numb, countWoB(RangedNumbs,Color,NewCount), Count is NewCount+1. 
 countWoB([p(f(_,_),Numb)|RangedNumbs],Color,Count):- Color\==Numb, countWoB(RangedNumbs,Color,Count).
 
-%blackOrWhite(X,Y,Blacks,Back, Bow)
-blackOrWhite(X,Y,Grid,NewGrid,Bow):- delete(Grid, p(f(X,Y),_),Grid1),append([p(f(X,Y),Bow)], Grid1, NewGrid).
 
 %iBomb(M,N,Numbers, NewNumbers, Grid, NewGrid)
 %searches 100% sure fields on the playground and color them
@@ -146,16 +173,16 @@ neighbour(p(f(X,Y),_),Grid,p(f(RX,RY),T)) :-X1 is X-1, X2 is X+1, Y1 is Y-1, Y2 
 	;(member(p(f(X1,Y),T),Grid), RX=X1,RY=Y)
 	;(member(p(f(X2,Y),T),Grid), RX=X2,RY=Y)).
 
-%numbToFields(+M,+N,+Numb,+NumbFields,+Grid,-NewGrid)
+%numbToFields(+Numb,+NumbFields,+Grid,-NewGrid)
 %get a Field and connect it to its weight
-numbToFields(_,_,_,[],Grid,Grid).
-numbToFields(M,N,D,[p(f(X,Y),T)|NumbFields],Grid,NewGrid):-T==t, 
+numbToFields(_,[],Grid,Grid).
+numbToFields(D,[p(f(X,Y),T)|NumbFields],Grid,NewGrid):-T==t, 
 	bagof(Neighbour,(neighbour(p(f(X,Y),T),Grid,Neighbour)),Neighbours), countWoB(Neighbours,w,WhiteCount),
 	countWoB(Neighbours,b,BlackCount), length(Neighbours, Fields), Res is 4-Fields+BlackCount-WhiteCount,
-	blackOrWhite(X,Y,Grid,Grid1, w(D,Res)), numbToFields(M,N,D,NumbFields,Grid1,NewGrid).
-numbToFields(M,N,D,[p(f(X,Y),w(WX,WY))|NumbFields],Grid,NewGrid):- 
-	WR is D+WX,blackOrWhite(X,Y,Grid,Grid1, w(WR,WY)), numbToFields(M,N,D,NumbFields,Grid1,NewGrid).
-numbToFields(M,N,D,[p(f(_,_),T)|NumbFields],Grid,NewGrid):-(T==b;T==w),numbToFields(M,N,D,NumbFields,Grid,NewGrid).
+	blackOrWhite(X,Y,Grid,Grid1, w(D,Res)), numbToFields(D,NumbFields,Grid1,NewGrid).
+numbToFields(D,[p(f(X,Y),w(WX,WY))|NumbFields],Grid,NewGrid):- 
+	WR is D+WX,blackOrWhite(X,Y,Grid,Grid1, w(WR,WY)), numbToFields(D,NumbFields,Grid1,NewGrid).
+numbToFields(D,[p(f(_,_),T)|NumbFields],Grid,NewGrid):-(T==b;T==w),numbToFields(D,NumbFields,Grid,NewGrid).
 
 %rangeInNumbs(+Element,+Numbs, -Numb)
 %Is in the range of my Field a Number?
@@ -204,11 +231,11 @@ union([A|B], C, D) :- member(A,C), !, union(B,C,D).
 union([A|B], C, [A|D]) :- union(B,C,D).
 union([],Z,Z).
 
-%weightFields(+M,+N,+Numbers,+Grid,-Weightedgrid)
+%weightFields(+Numbers,+Grid,-Weightedgrid)
 %All fields which belongs to a Number get a weight
-weightFields(_,_,[],Grid,Grid).
-weightFields(M,N,[c(f(X,Y),D)|Numbers],Grid,WeightedGrid):-bagof(p(f(X1,Y1),T),(range(X,Y,X1,Y1), member(p(f(X1,Y1),T),Grid)),NumbFields),
-	numbToFields(M,N,D,NumbFields,Grid,NewGrid), weightFields(M,N,Numbers,NewGrid,WeightedGrid).
+weightFields([],Grid,Grid).
+weightFields([c(f(X,Y),D)|Numbers],Grid,WeightedGrid):-bagof(p(f(X1,Y1),T),(range(X,Y,X1,Y1), member(p(f(X1,Y1),T),Grid)),NumbFields),
+	numbToFields(D,NumbFields,Grid,NewGrid), weightFields(Numbers,NewGrid,WeightedGrid).
 
 %whiteNeighbour(+Element,Grid)
 %searches for white fields in the neighbourhood
