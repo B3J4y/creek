@@ -38,32 +38,32 @@ loopMyGrid(Numbers,Grid, NewGrid) :- length(Numbers,I), I>0,insertAtEnd(f(x, x),
 % Workplace
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-getFirtstWhite([p(f(X,Y),w)|List], p(f(X,Y),w)).
-getFirtstWhite([p(f(X,Y),T)|List], Res):- T\=w, getFirtstWhite(List, Res),!.
+getFirtstWhite([p(f(X,Y),w)|_], p(f(X,Y),w)).
+getFirtstWhite([p(f(_,_),T)|List], Res):- T\=w, getFirtstWhite(List, Res),!.
 
 getWhiteSnake(X,Y,Grid,Grid):-member(p(f(X,Y),T),Grid), T\==w.
 getWhiteSnake(X,Y,Grid,Res):-member(p(f(X,Y),w),Grid), delete( Grid, p(f(X,Y),w),Res1), X1 is X-1, X2 is X+1, Y1 is Y-1, Y2 is Y+1,
-	upStream(X,Y2,Res1, Res2), rightStream(X2,Y,Res2, Res3), leftStream(X1,Y,Res3, Res4) ,downStream(X,Y1,Res4, Res).
+	upStream(X,Y2,Res1, Res2), rightStream(X2,Y,Res2, Res3), leftStream(X1,Y,Res3, Res4) ,downStream(X,Y1,Res4, Res), !.
 	%getWhiteSnake(X1,Y,Grid,Res1),getWhiteSnake(X2,Y,Grid,Res2),getWhiteSnake(X,Y1,Grid,Res3),getWhiteSnake(X,Y2,Grid,Res4),
 	
 upStream(X,Y,Grid,Grid) :- member(p(f(X,Y),T),Grid), T\==w.
-upStream(X,Y,Grid,Grid) :- not(member(p(f(X,Y),T),Grid)).
+upStream(X,Y,Grid,Grid) :- not(member(p(f(X,Y),_),Grid)).
 upStream(X,Y,Grid, Res) :- member(p(f(X,Y),w),Grid), delete( Grid, p(f(X,Y),w),Res1), X1 is X-1, X2 is X+1, Y1 is Y+1,
-	upStream(X,Y2,Res1,Res2), rightStream(X2,Y,Res2,Res3), leftStream(X1,Y,Res3,Res).
+	upStream(X,Y1,Res1,Res2), rightStream(X2,Y,Res2,Res3), leftStream(X1,Y,Res3,Res).
 
 downStream(X,Y,Grid,Grid) :- member(p(f(X,Y),T),Grid), T\==w.
-downStream(X,Y,Grid,Grid) :- not(member(p(f(X,Y),T),Grid)).
+downStream(X,Y,Grid,Grid) :- not(member(p(f(X,Y),_),Grid)).
 downStream(X,Y,Grid, Res) :- member(p(f(X,Y),w),Grid), delete( Grid, p(f(X,Y),w),Res1),X1 is X-1, X2 is X+1, Y1 is Y-1,
 	downStream(X,Y1,Res1,Res2), rightStream(X2,Y,Res2,Res3), leftStream(X1,Y,Res3,Res).
 
 rightStream(X,Y,Grid,Grid) :- member(p(f(X,Y),T),Grid), T\==w.
-rightStream(X,Y,Grid,Grid) :- not(member(p(f(X,Y),T),Grid)).
-rightStream(X,Y,Grid,Res) :-member(p(f(X,Y),w),Grid), delete( Grid, p(f(X,Y),w),Res1),X1 is X-1, X2 is X+1, Y1 is Y-1, Y2 is Y+1,
+rightStream(X,Y,Grid,Grid) :- not(member(p(f(X,Y),_),Grid)).
+rightStream(X,Y,Grid,Res) :-member(p(f(X,Y),w),Grid), delete( Grid, p(f(X,Y),w),Res1), X2 is X+1, Y1 is Y-1, Y2 is Y+1,
 	upStream(X,Y2,Res1, Res2), rightStream(X2,Y,Res2,Res3),downStream(X,Y1,Res3, Res).
 
 leftStream(X,Y,Grid,Grid) :- member(p(f(X,Y),T),Grid), T\==w.
-leftStream(X,Y,Grid,Grid) :- not(member(p(f(X,Y),T),Grid)).
-leftStream(X,Y,Grid,Res) :-member(p(f(X,Y),w),Grid), delete( Grid, p(f(X,Y),w),Res1),X1 is X-1, X2 is X+1, Y1 is Y-1, Y2 is Y+1,
+leftStream(X,Y,Grid,Grid) :- not(member(p(f(X,Y),_),Grid)).
+leftStream(X,Y,Grid,Res) :-member(p(f(X,Y),w),Grid), delete( Grid, p(f(X,Y),w),Res1),X1 is X-1, Y1 is Y-1, Y2 is Y+1,
 	upStream(X,Y2,Res1, Res2), leftStream(X1,Y,Res2,Res3),downStream(X,Y1,Res3, Res).
 %colorMaxElements(+Grid,-Grid)
 %colors the Element with the maximum vaulue
