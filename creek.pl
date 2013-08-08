@@ -19,15 +19,17 @@ range(X,Y,XX,YY) :- delta(DX,DY), XX is X+DX, YY is Y+DY.
 % berechnet die schwarzen Felder ("Blacks") EINER Loesung fuer das durch "M",
 % "N" und "Numbers" beschriebene MxN-Gitter.
 
-creek(M,N,Numbers,Blacks):-myGrid(M,N,WholeTGrid), iBomb(M,N,Numbers,Numbs,WholeTGrid, BombedGrid), loopMyGrid(Numbs,BombedGrid, NewGrid),
-	bagof(f(X,Y),member(p(f(X,Y),b),NewGrid), Blacks). %gridToBlack
+creek(M,N,Numbers,Blacks):-myGrid(M,N,WholeTGrid), iBomb(M,N,Numbers,Numbs,WholeTGrid, BombedGrid), loopMyGrid(Numbs,BombedGrid, NewGrid), 
+	getFirtstWhite(NewGrid,p(f(X,Y),w)),getWhiteSnake(X,Y,NewGrid,WhiteSnake), not(member(p(f(_,_),w),WhiteSnake)),
+	%member(p(f(X,Y),b),WhiteSnake.
+	bagof(f(X1,Y1),member(p(f(X1,Y1),b),WhiteSnake), Blacks), !. %gridToBlack
 
 %loopMyGrid([],Grid, Grid):-not(bagof(p(f(X,Y),t),member(p(f(X,Y),t),Grid),_)).
 loopMyGrid([],Grid, NewGrid):-whiteTs(Grid,[],WhitedGrid), 
 	((bagof(p(f(X,Y),T),(member(p(f(X,Y),t),WhitedGrid)),Ts),blackSureFields(Ts,WhitedGrid,NewGrid));
 		(not(bagof(p(f(X,Y),T),(member(p(f(X,Y),t),WhitedGrid)),_)), WhitedGrid=NewGrid)).
 loopMyGrid(Numbers,Grid, NewGrid) :- length(Numbers,I), I>0,insertAtEnd(f(x, x), Numbers, EndNumbers),
-	sureshot(EndNumbers,SureNumbs,Grid,SureGrid), whiteTs(SureGrid,SureNumbs,WhitedGrid), 
+	sureshot(EndNumbers,SureNumbs,Grid,SureGrid), whiteTs(SureGrid,SureNumbs,WhitedGrid),
 	weightFields(SureNumbs,WhitedGrid,WeightedGrid), colorMaxElements(WeightedGrid,ColoredMax),
 	((bagof(p(f(X,Y),t),(member(p(f(X,Y),t),ColoredMax)),Ts),blackSureFields(Ts,ColoredMax,BlackGrid));
 		(not(bagof(p(f(X,Y),t),(member(p(f(X,Y),t),ColoredMax)),_)), BlackGrid=ColoredMax))
@@ -35,37 +37,56 @@ loopMyGrid(Numbers,Grid, NewGrid) :- length(Numbers,I), I>0,insertAtEnd(f(x, x),
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Workplace
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%weightedToT(List,-List)
-weightedToT([],[]).
-weightedToT([p(f(X,Y),T)|List],[p(f(X,Y),T)|NewList]) :- atom(T),weightedToT(List,NewList).
-weightedToT([p(f(X,Y),w(_,_))|List],[p(f(X,Y),t)|NewList]):-weightedToT(List,NewList).
 
-%blackSureFields(List,+Grid,-Liste)
+getFirtstWhite([p(f(X,Y),w)|List], p(f(X,Y),w)).
+getFirtstWhite([p(f(X,Y),T)|List], Res):- T\=w, getFirtstWhite(List, Res),!.
 
-blackSureFields([],Grid,Grid).
-blackSureFields(List,Grid,Grid):- not(bagof(p(f(X,Y),t),(member(p(f(X,Y),t),List),blackNeighbour(p(f(X,Y),t),Grid)),_)).
-blackSureFields(List,Grid,NewGrid):- bagof(p(f(X,Y),t),(member(p(f(X,Y),t),List),blackNeighbour(p(f(X,Y),t),Grid)),Blacks),
-	listToElementBow(Blacks,Grid,b,NewGrid).
+getWhiteSnake(X,Y,Grid,Grid):-member(p(f(X,Y),T),Grid), T\==w.
+getWhiteSnake(X,Y,Grid,Res):-member(p(f(X,Y),w),Grid), delete( Grid, p(f(X,Y),w),Res1), X1 is X-1, X2 is X+1, Y1 is Y-1, Y2 is Y+1,
+	upStream(X,Y2,Res1, Res2), rightStream(X2,Y,Res2, Res3), leftStream(X1,Y,Res3, Res4) ,downStream(X,Y1,Res4, Res).
+	%getWhiteSnake(X1,Y,Grid,Res1),getWhiteSnake(X2,Y,Grid,Res2),getWhiteSnake(X,Y1,Grid,Res3),getWhiteSnake(X,Y2,Grid,Res4),
+	
+upStream(X,Y,Grid,Grid) :- member(p(f(X,Y),T),Grid), T\==w.
+upStream(X,Y,Grid,Grid) :- not(member(p(f(X,Y),T),Grid)).
+upStream(X,Y,Grid, Res) :- member(p(f(X,Y),w),Grid), delete( Grid, p(f(X,Y),w),Res1), X1 is X-1, X2 is X+1, Y1 is Y+1,
+	upStream(X,Y2,Res1,Res2), rightStream(X2,Y,Res2,Res3), leftStream(X1,Y,Res3,Res).
+
+downStream(X,Y,Grid,Grid) :- member(p(f(X,Y),T),Grid), T\==w.
+downStream(X,Y,Grid,Grid) :- not(member(p(f(X,Y),T),Grid)).
+downStream(X,Y,Grid, Res) :- member(p(f(X,Y),w),Grid), delete( Grid, p(f(X,Y),w),Res1),X1 is X-1, X2 is X+1, Y1 is Y-1,
+	downStream(X,Y1,Res1,Res2), rightStream(X2,Y,Res2,Res3), leftStream(X1,Y,Res3,Res).
+
+rightStream(X,Y,Grid,Grid) :- member(p(f(X,Y),T),Grid), T\==w.
+rightStream(X,Y,Grid,Grid) :- not(member(p(f(X,Y),T),Grid)).
+rightStream(X,Y,Grid,Res) :-member(p(f(X,Y),w),Grid), delete( Grid, p(f(X,Y),w),Res1),X1 is X-1, X2 is X+1, Y1 is Y-1, Y2 is Y+1,
+	upStream(X,Y2,Res1, Res2), rightStream(X2,Y,Res2,Res3),downStream(X,Y1,Res3, Res).
+
+leftStream(X,Y,Grid,Grid) :- member(p(f(X,Y),T),Grid), T\==w.
+leftStream(X,Y,Grid,Grid) :- not(member(p(f(X,Y),T),Grid)).
+leftStream(X,Y,Grid,Res) :-member(p(f(X,Y),w),Grid), delete( Grid, p(f(X,Y),w),Res1),X1 is X-1, X2 is X+1, Y1 is Y-1, Y2 is Y+1,
+	upStream(X,Y2,Res1, Res2), leftStream(X1,Y,Res2,Res3),downStream(X,Y1,Res3, Res).
 %colorMaxElements(+Grid,-Grid)
+%colors the Element with the maximum vaulue
 colorMaxElements(Grid,Grid):- not(bagof(p(f(FX,FY),w(WX,WY)),(member(p(f(FX,FY),w(WX,WY)),Grid)), _)).
 colorMaxElements(Grid,NewGrid):- bagof(p(f(FX,FY),w(WX,WY)),(member(p(f(FX,FY),w(WX,WY)),Grid)), WeightedList),
 	maxInList(WeightedList,Max),
 	bagof(p(f(FX2,FY2),w(WX2,WY2)),(member(p(f(FX2,FY2),w(WX2,WY2)),WeightedList), Temp is WX2+WY2, Temp==Max), MaxList),
-	((member(p(f(FX3,FY3),w(WX3,WY3)),MaxList),WY3==0);(member(p(f(FX3,FY3),w(WX3,WY3)),MaxList))),blackOrWhite(FX3,FY3,Grid, NewGrid,b).
-%maxInList(+Grid, -Maximum)
-maxInList([],0).
-maxInList([p(f(_,_),w(X,Y))|Grid],Max):- maxInList(Grid,Down), T is X+Y, max(Down,T,Max).
+	member(p(f(FX3,FY3),w(_,_)),MaxList),!,(blackOrWhite(FX3,FY3,Grid, NewGrid,b);blackOrWhite(FX3,FY3,Grid, NewGrid,w)). 
+	%writeln(FX3 + " " + FY3 + " " + NewGrid). %(member(p(f(FX3,FY3),w(WX3,WY3)),MaxList),WY3==0);
 
-%max(+Numb1,+Numb2,-Res)
-max(I,J,R):-((I>J,R=I);(J>I,R=J);(I==J,R=J)).
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % done predicates, ordered alphabetically
 %countWoB(+RangedNumbs,+Color,-Count)
 %blackOrWhite(+X,+Y,+Grid,-Back, +Bow)
+%blackSureFields(List,+Grid,-Liste)
 %iBomb(M,N,Numbers, NewNumbers, Grid, NewGrid)
 %insertAtEnd(+Element,+List,-NewList)
 %listToElementBow(+Numbers,+Grid,+Color,-NewGrid)
+%max(+Numb1,+Numb2,-Res)
+%maxInList(+Grid, -Maximum)
 %myGrid(+X,+Y, -Grid)
 %neighbour(+Field,+Grid,-Neighbour)
 %numbToFields(+Numb,+NumbFields,+Grid,-NewGrid)
@@ -73,6 +94,7 @@ max(I,J,R):-((I>J,R=I);(J>I,R=J);(I==J,R=J)).
 %row(+X,+Y,-Row)
 %sureshot(+Numbs,-SureNumbs,+Grid,-SureGrid, +Marker)
 %union(+Liste, +Liste, - Vereinigung)
+%weightedToT(List,-List)
 %weightFields(+Numbers,+Grid,-Weightedgrid)
 %whiteNeighbour(+Element,Grid)
 %whiteTs(+Grid,+Numbs,-NewGrid)
@@ -84,6 +106,13 @@ blackNeighbour(p(f(X,Y),T),Grid) :-bagof(Neighbour,neighbour(p(f(X,Y),T),Grid,Ne
 
 %blackOrWhite(X,Y,Blacks,Back, Bow)
 blackOrWhite(X,Y,Grid,NewGrid,Bow):- delete(Grid, p(f(X,Y),_),Grid1),append([p(f(X,Y),Bow)], Grid1, NewGrid).
+
+%blackSureFields(List,+Grid,-Liste)
+%blacks Ts
+blackSureFields([],Grid,Grid).
+blackSureFields(List,Grid,Grid):- not(bagof(p(f(X,Y),t),(member(p(f(X,Y),t),List),blackNeighbour(p(f(X,Y),t),Grid)),_)).
+blackSureFields(List,Grid,NewGrid):- bagof(p(f(X,Y),t),(member(p(f(X,Y),t),List),blackNeighbour(p(f(X,Y),t),Grid)),Blacks),
+	listToElementBow(Blacks,Grid,b,NewGrid).
 
 %countWoB(+RangedNumbs,+Color,-Count)
 countWoB([],_,0).
@@ -156,8 +185,17 @@ listToElementBow([p(f(_, _),Count)|Numbers],Grid,Color,NewGrid):- Color==b, Coun
 	listToElementBow(Numbers,Grid,Color,NewGrid).
 listToElementBow([p(f(_, _),Count)|Numbers],Grid,Color,NewGrid):- Color==w, Count==b, 
 	listToElementBow(Numbers,Grid,Color,NewGrid).
-listToElementBow([p(f(_, _),Count)|Numbers],Grid,Color,NewGrid):- Count==Color, 
+listToElementBow([p(f(_, _),Count)|Numbers],Grid,Color,NewGrid):- Count==Color, Color\==b, Color\==w,
 	listToElementBow(Numbers,Grid,Color,NewGrid).
+
+%max(+Numb1,+Numb2,-Res)
+%returns the max value
+max(I,J,R):-((I>J,R=I);(J>I,R=J);(I==J,R=J)).
+
+%maxInList(+Grid, -Maximum)
+%returns the maximum of the list
+maxInList([],0).
+maxInList([p(f(_,_),w(X,Y))|Grid],Max):- maxInList(Grid,Down), T is X+Y, max(Down,T,Max).
 
 %myGrid(+X,+Y, -Grid)
 %Macht ein volles Grid, ohne Abstufungen
@@ -230,6 +268,12 @@ sureshot([c(f(X, Y),Count)|Numbers],SureNumbs,Grid,SureGrid) :- Count==3,delete(
 union([A|B], C, D) :- member(A,C), !, union(B,C,D).
 union([A|B], C, [A|D]) :- union(B,C,D).
 union([],Z,Z).
+
+%weightedToT(List,-List)
+%change the weighted Fields back to Ts
+weightedToT([],[]).
+weightedToT([p(f(X,Y),T)|List],[p(f(X,Y),T)|NewList]) :- atom(T),weightedToT(List,NewList).
+weightedToT([p(f(X,Y),w(_,_))|List],[p(f(X,Y),t)|NewList]):-weightedToT(List,NewList).
 
 %weightFields(+Numbers,+Grid,-Weightedgrid)
 %All fields which belongs to a Number get a weight
