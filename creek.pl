@@ -20,7 +20,7 @@ range(X,Y,XX,YY) :- delta(DX,DY), XX is X+DX, YY is Y+DY.
 % "N" und "Numbers" beschriebene MxN-Gitter.
 
 creek(M,N,Numbers,Blacks):-myGrid(M,N,WholeTGrid), iBomb(M,N,Numbers,Numbs,WholeTGrid, BombedGrid), loopMyGrid(Numbs,BombedGrid, NewGrid), 
-	getFirtstWhite(NewGrid,p(f(X,Y),w)),getWhiteSnake(X,Y,NewGrid,WhiteSnake), not(member(p(f(_,_),w),WhiteSnake)),
+	getFirtstWhite(NewGrid,p(f(X,Y),w)), blackAllTs(NewGrid, Full), getWhiteSnake(X,Y,Full,WhiteSnake), not(member(p(f(_,_),w),WhiteSnake)),
 	%member(p(f(X,Y),b),WhiteSnake.
 	bagof(f(X1,Y1),member(p(f(X1,Y1),b),WhiteSnake), Blacks), !. %gridToBlack
 
@@ -28,7 +28,7 @@ creek(M,N,Numbers,Blacks):-myGrid(M,N,WholeTGrid), iBomb(M,N,Numbers,Numbs,Whole
 loopMyGrid([],Grid, NewGrid):-whiteTs(Grid,[],WhitedGrid), 
 	((bagof(p(f(X,Y),T),(member(p(f(X,Y),t),WhitedGrid)),Ts),blackSureFields(Ts,WhitedGrid,NewGrid));
 		(not(bagof(p(f(X,Y),T),(member(p(f(X,Y),t),WhitedGrid)),_)), WhitedGrid=NewGrid)).
-loopMyGrid(Numbers,Grid, NewGrid) :- length(Numbers,I), I>0,insertAtEnd(f(x, x), Numbers, EndNumbers),
+loopMyGrid(Numbers,Grid, NewGrid) :- memberTgrid(Grid),length(Numbers,I), I>0,insertAtEnd(f(x, x), Numbers, EndNumbers),
 	sureshot(EndNumbers,SureNumbs,Grid,SureGrid), whiteTs(SureGrid,SureNumbs,WhitedGrid),
 	weightFields(SureNumbs,WhitedGrid,WeightedGrid), colorMaxElements(WeightedGrid,ColoredMax),
 	((bagof(p(f(X,Y),t),(member(p(f(X,Y),t),ColoredMax)),Ts),blackSureFields(Ts,ColoredMax,BlackGrid));
@@ -37,6 +37,11 @@ loopMyGrid(Numbers,Grid, NewGrid) :- length(Numbers,I), I>0,insertAtEnd(f(x, x),
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Workplace
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+memberTgrid(Grid):-member(p(f(_,_),T),Grid), T==t, !.
+
+blackAllTs([], []). 
+blackAllTs([p(f(X,Y),t)|List], [p(f(X,Y),b)|Rest]):- blackAllTs(List, Rest). 
+blackAllTs([p(f(X,Y),T)|List], [p(f(X,Y),T)|Rest]):- T\==t, blackAllTs(List, Rest). 
 
 getFirtstWhite([p(f(X,Y),w)|_], p(f(X,Y),w)).
 getFirtstWhite([p(f(_,_),T)|List], Res):- T\=w, getFirtstWhite(List, Res),!.
@@ -239,12 +244,22 @@ sureshot([f(x, x)|Numbers],Numbers,Grid,Grid).
 %Sureshots for 1
 sureshot([c(f(X, Y),Count)|Numbers],SureNumbs,Grid,SureGrid) :- Count==1,delete(Numbers, f(x,x), DeletedNumbers), insertAtEnd(f(x, x), DeletedNumbers, EndNumbers),
 	bagof(p(f(X1,Y1),Numb),(range(X,Y,X1,Y1), member(p(f(X1,Y1),Numb),Grid)),RangedNumbs), countWoB(RangedNumbs,w,WhiteCount),
-	((WhiteCount==3, member(p(f(X2,Y2),t),RangedNumbs), blackOrWhite(X2,Y2,Grid,NewGrid,b),sureshot(EndNumbers,SureNumbs,NewGrid,SureGrid));
-		(WhiteCount<3, countWoB(RangedNumbs,b,BlackCount),(
-			(BlackCount==1, listToElementBow(RangedNumbs,Grid,w,NewGrid),sureshot(EndNumbers,SureNumbs,NewGrid,SureGrid));
-			(BlackCount==0, Grid=NewGrid),insertAtEnd(c(f(X, Y),Count), Numbers, EndNumbs),sureshot(EndNumbs,SureNumbs,NewGrid,SureGrid)
-		)
-	)).
+	length(RangedNumbs, Length),
+	((Length == 4,
+		((WhiteCount==3, member(p(f(X2,Y2),t),RangedNumbs), blackOrWhite(X2,Y2,Grid,NewGrid,b),sureshot(EndNumbers,SureNumbs,NewGrid,SureGrid));
+			(WhiteCount<3, countWoB(RangedNumbs,b,BlackCount),(
+				(BlackCount==1, listToElementBow(RangedNumbs,Grid,w,NewGrid),sureshot(EndNumbers,SureNumbs,NewGrid,SureGrid));
+				(BlackCount==0, Grid=NewGrid),insertAtEnd(c(f(X, Y),Count), Numbers, EndNumbs),sureshot(EndNumbs,SureNumbs,NewGrid,SureGrid)
+			)
+		)));
+	(Length==2,
+		(WhiteCount==1, member(p(f(X2,Y2),t),RangedNumbs), blackOrWhite(X2,Y2,Grid,NewGrid,b),sureshot(EndNumbers,SureNumbs,NewGrid,SureGrid));
+			(WhiteCount==0, countWoB(RangedNumbs,b,BlackCount),(
+				(BlackCount==1, listToElementBow(RangedNumbs,Grid,w,NewGrid),sureshot(EndNumbers,SureNumbs,NewGrid,SureGrid));
+				(BlackCount==0, Grid=NewGrid),insertAtEnd(c(f(X, Y),Count), Numbers, EndNumbs),sureshot(EndNumbs,SureNumbs,NewGrid,SureGrid)
+			)
+		))
+	).
 %Sureshots for 2
 sureshot([c(f(X, Y),Count)|Numbers],SureNumbs,Grid,SureGrid) :- Count==2,delete(Numbers, f(x,x), DeletedNumbers), insertAtEnd(f(x, x), DeletedNumbers, EndNumbers),
 	bagof(p(f(X1,Y1),Numb),(range(X,Y,X1,Y1), member(p(f(X1,Y1),Numb),Grid)),RangedNumbs), countWoB(RangedNumbs,w,WhiteCount),
