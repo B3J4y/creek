@@ -19,7 +19,8 @@ range(X,Y,XX,YY) :- delta(DX,DY), XX is X+DX, YY is Y+DY.
 % berechnet die schwarzen Felder ("Blacks") EINER Loesung fuer das durch "M",
 % "N" und "Numbers" beschriebene MxN-Gitter.
 
-creek(M,N,Numbers,Blacks):-myGrid(M,N,WholeTGrid), iBomb(M,N,Numbers,Numbs,WholeTGrid, BombedGrid), loopMyGrid(Numbs,BombedGrid, NewGrid), 
+creek(M,N,Numbers,Blacks):-
+	myGrid(M,N,WholeTGrid), iBomb(M,N,Numbers,Numbs,WholeTGrid, BombedGrid), loopMyGrid(Numbs,BombedGrid, NewGrid), 
 	getFirtstWhite(NewGrid,p(f(X,Y),w)), blackAllTs(NewGrid, Full), getWhiteSnake(X,Y,Full,WhiteSnake), not(member(p(f(_,_),w),WhiteSnake)),
 	%member(p(f(X,Y),b),WhiteSnake.
 	bagof(f(X1,Y1),member(p(f(X1,Y1),b),WhiteSnake), Blacks), !. %gridToBlack
@@ -28,6 +29,7 @@ creek(M,N,Numbers,Blacks):-myGrid(M,N,WholeTGrid), iBomb(M,N,Numbers,Numbs,Whole
 loopMyGrid([],Grid, NewGrid):-whiteTs(Grid,[],WhitedGrid), 
 	((bagof(p(f(X,Y),T),(member(p(f(X,Y),t),WhitedGrid)),Ts),blackSureFields(Ts,WhitedGrid,NewGrid));
 		(not(bagof(p(f(X,Y),T),(member(p(f(X,Y),t),WhitedGrid)),_)), WhitedGrid=NewGrid)).
+		%open('debug.txt', append, Stream), write(Stream, NewGrid), close(Stream).
 loopMyGrid(Numbers,Grid, NewGrid) :- memberTgrid(Grid),length(Numbers,I), I>0,insertAtEnd(f(x, x), Numbers, EndNumbers),
 	sureshot(EndNumbers,SureNumbs,Grid,SureGrid), whiteTs(SureGrid,SureNumbs,WhitedGrid),
 	weightFields(SureNumbs,WhitedGrid,WeightedGrid), colorMaxElements(WeightedGrid,ColoredMax),
@@ -219,11 +221,11 @@ neighbour(p(f(X,Y),_),Grid,p(f(RX,RY),T)) :-X1 is X-1, X2 is X+1, Y1 is Y-1, Y2 
 %numbToFields(+Numb,+NumbFields,+Grid,-NewGrid)
 %get a Field and connect it to its weight
 numbToFields(_,[],Grid,Grid).
-numbToFields(D,[p(f(X,Y),T)|NumbFields],Grid,NewGrid):-T==t, 
+numbToFields(U,[p(f(X,Y),T)|NumbFields],Grid,NewGrid):-T==t, D is U*2,
 	bagof(Neighbour,(neighbour(p(f(X,Y),T),Grid,Neighbour)),Neighbours), countWoB(Neighbours,w,WhiteCount),
 	countWoB(Neighbours,b,BlackCount), length(Neighbours, Fields), Res is 4-Fields+BlackCount-WhiteCount,
 	blackOrWhite(X,Y,Grid,Grid1, w(D,Res)), numbToFields(D,NumbFields,Grid1,NewGrid).
-numbToFields(D,[p(f(X,Y),w(WX,WY))|NumbFields],Grid,NewGrid):- 
+numbToFields(U,[p(f(X,Y),w(WX,WY))|NumbFields],Grid,NewGrid):- D is U*2,
 	WR is D+WX,blackOrWhite(X,Y,Grid,Grid1, w(WR,WY)), numbToFields(D,NumbFields,Grid1,NewGrid).
 numbToFields(D,[p(f(_,_),T)|NumbFields],Grid,NewGrid):-(T==b;T==w),numbToFields(D,NumbFields,Grid,NewGrid).
 
