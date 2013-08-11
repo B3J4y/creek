@@ -18,95 +18,57 @@ range(X,Y,XX,YY) :- delta(DX,DY), XX is X+DX, YY is Y+DY.
 % creek(+M,+N,+Numbers,-Blacks)
 % berechnet die schwarzen Felder ("Blacks") EINER Loesung fuer das durch "M",
 % "N" und "Numbers" beschriebene MxN-Gitter.
-
 creek(M,N,Numbers,Blacks):-
 	myGrid(M,N,WholeTGrid), iBomb(M,N,Numbers,Numbs,WholeTGrid, BombedGrid), loopMyGrid(Numbs,BombedGrid, NewGrid), 
-	getFirtstWhite(NewGrid,p(f(X,Y),w)), blackAllTs(NewGrid, Full), getWhiteSnake(X,Y,Full,WhiteSnake), not(member(p(f(_,_),w),WhiteSnake)),
+	 blackAllTs(NewGrid, Full),
 	%member(p(f(X,Y),b),WhiteSnake.
-	bagof(f(X1,Y1),member(p(f(X1,Y1),b),WhiteSnake), Blacks), !. %gridToBlack
+	bagof(f(X1,Y1),member(p(f(X1,Y1),b),Full), Blacks), !.
 
-%loopMyGrid([],Grid, Grid):-not(bagof(p(f(X,Y),t),member(p(f(X,Y),t),Grid),_)).
-loopMyGrid([],Grid, NewGrid):-whiteTs(Grid,[],WhitedGrid), 
-	((bagof(p(f(X,Y),T),(member(p(f(X,Y),t),WhitedGrid)),Ts),blackSureFields(Ts,WhitedGrid,NewGrid));
-		(not(bagof(p(f(X,Y),T),(member(p(f(X,Y),t),WhitedGrid)),_)), WhitedGrid=NewGrid)).
-		%open('debug.txt', append, Stream), write(Stream, NewGrid), close(Stream).
-loopMyGrid(Numbers,Grid, NewGrid) :- memberTgrid(Grid),length(Numbers,I), I>0,insertAtEnd(f(x, x), Numbers, EndNumbers),
-	sureshot(EndNumbers,SureNumbs,Grid,SureGrid), whiteTs(SureGrid,SureNumbs,WhitedGrid),
-	weightFields(SureNumbs,WhitedGrid,WeightedGrid), colorMaxElements(WeightedGrid,ColoredMax),
-	((bagof(p(f(X,Y),t),(member(p(f(X,Y),t),ColoredMax)),Ts),blackSureFields(Ts,ColoredMax,BlackGrid));
-		(not(bagof(p(f(X,Y),t),(member(p(f(X,Y),t),ColoredMax)),_)), BlackGrid=ColoredMax))
-	, weightedToT(BlackGrid,NewTGrid),loopMyGrid(SureNumbs,NewTGrid, NewGrid).
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Workplace
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-memberTgrid(Grid):-member(p(f(_,_),T),Grid), T==t, !.
 
-blackAllTs([], []). 
-blackAllTs([p(f(X,Y),t)|List], [p(f(X,Y),b)|Rest]):- blackAllTs(List, Rest). 
-blackAllTs([p(f(X,Y),T)|List], [p(f(X,Y),T)|Rest]):- T\==t, blackAllTs(List, Rest). 
-
-getFirtstWhite([p(f(X,Y),w)|_], p(f(X,Y),w)).
-getFirtstWhite([p(f(_,_),T)|List], Res):- T\=w, getFirtstWhite(List, Res),!.
-
-getWhiteSnake(X,Y,Grid,Grid):-member(p(f(X,Y),T),Grid), T\==w.
-getWhiteSnake(X,Y,Grid,Res):-member(p(f(X,Y),w),Grid), delete( Grid, p(f(X,Y),w),Res1), X1 is X-1, X2 is X+1, Y1 is Y-1, Y2 is Y+1,
-	upStream(X,Y2,Res1, Res2), rightStream(X2,Y,Res2, Res3), leftStream(X1,Y,Res3, Res4) ,downStream(X,Y1,Res4, Res), !.
-	%getWhiteSnake(X1,Y,Grid,Res1),getWhiteSnake(X2,Y,Grid,Res2),getWhiteSnake(X,Y1,Grid,Res3),getWhiteSnake(X,Y2,Grid,Res4),
-	
-upStream(X,Y,Grid,Grid) :- member(p(f(X,Y),T),Grid), T\==w.
-upStream(X,Y,Grid,Grid) :- not(member(p(f(X,Y),_),Grid)).
-upStream(X,Y,Grid, Res) :- member(p(f(X,Y),w),Grid), delete( Grid, p(f(X,Y),w),Res1), X1 is X-1, X2 is X+1, Y1 is Y+1,
-	upStream(X,Y1,Res1,Res2), rightStream(X2,Y,Res2,Res3), leftStream(X1,Y,Res3,Res).
-
-downStream(X,Y,Grid,Grid) :- member(p(f(X,Y),T),Grid), T\==w.
-downStream(X,Y,Grid,Grid) :- not(member(p(f(X,Y),_),Grid)).
-downStream(X,Y,Grid, Res) :- member(p(f(X,Y),w),Grid), delete( Grid, p(f(X,Y),w),Res1),X1 is X-1, X2 is X+1, Y1 is Y-1,
-	downStream(X,Y1,Res1,Res2), rightStream(X2,Y,Res2,Res3), leftStream(X1,Y,Res3,Res).
-
-rightStream(X,Y,Grid,Grid) :- member(p(f(X,Y),T),Grid), T\==w.
-rightStream(X,Y,Grid,Grid) :- not(member(p(f(X,Y),_),Grid)).
-rightStream(X,Y,Grid,Res) :-member(p(f(X,Y),w),Grid), delete( Grid, p(f(X,Y),w),Res1), X2 is X+1, Y1 is Y-1, Y2 is Y+1,
-	upStream(X,Y2,Res1, Res2), rightStream(X2,Y,Res2,Res3),downStream(X,Y1,Res3, Res).
-
-leftStream(X,Y,Grid,Grid) :- member(p(f(X,Y),T),Grid), T\==w.
-leftStream(X,Y,Grid,Grid) :- not(member(p(f(X,Y),_),Grid)).
-leftStream(X,Y,Grid,Res) :-member(p(f(X,Y),w),Grid), delete( Grid, p(f(X,Y),w),Res1),X1 is X-1, Y1 is Y-1, Y2 is Y+1,
-	upStream(X,Y2,Res1, Res2), leftStream(X1,Y,Res2,Res3),downStream(X,Y1,Res3, Res).
-%colorMaxElements(+Grid,-Grid)
-%colors the Element with the maximum vaulue
-colorMaxElements(Grid,Grid):- not(bagof(p(f(FX,FY),w(WX,WY)),(member(p(f(FX,FY),w(WX,WY)),Grid)), _)).
-colorMaxElements(Grid,NewGrid):- bagof(p(f(FX,FY),w(WX,WY)),(member(p(f(FX,FY),w(WX,WY)),Grid)), WeightedList),
-	maxInList(WeightedList,Max),
-	bagof(p(f(FX2,FY2),w(WX2,WY2)),(member(p(f(FX2,FY2),w(WX2,WY2)),WeightedList), Temp is WX2+WY2, Temp==Max), MaxList),
-	member(p(f(FX3,FY3),w(_,_)),MaxList),!,(blackOrWhite(FX3,FY3,Grid, NewGrid,b);blackOrWhite(FX3,FY3,Grid, NewGrid,w)). 
-	%writeln(FX3 + " " + FY3 + " " + NewGrid). %(member(p(f(FX3,FY3),w(WX3,WY3)),MaxList),WY3==0);
-
-
-
+%done
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % done predicates, ordered alphabetically
-%countWoB(+RangedNumbs,+Color,-Count)
+%blackAllTs(+Grid, -NewGrid). 
 %blackOrWhite(+X,+Y,+Grid,-Back, +Bow)
 %blackSureFields(List,+Grid,-Liste)
+%colorMaxElements(+Grid,-Grid)
+%countWoB(+RangedNumbs,+Color,-Count)
+%downStream(+X,+Y,+Grid,-NewGrid)	
+%getFirtstWhite(+Edges, -Edge).
+%getWhiteSnake(+X,+Y,+Grid,-NewGrid)
 %iBomb(M,N,Numbers, NewNumbers, Grid, NewGrid)
 %insertAtEnd(+Element,+List,-NewList)
+%leftStream(+X,+Y,+Grid,-NewGrid)	
 %listToElementBow(+Numbers,+Grid,+Color,-NewGrid)
+%loopMyGrid(+Numbers, +Grid, -NewGrid)
 %max(+Numb1,+Numb2,-Res)
 %maxInList(+Grid, -Maximum)
+%memberTgrid(+Grid)
 %myGrid(+X,+Y, -Grid)
 %neighbour(+Field,+Grid,-Neighbour)
 %numbToFields(+Numb,+NumbFields,+Grid,-NewGrid)
 %rangeInNumbs(+Element,+Numbs,-Numb)
+%rightStream(+X,+Y,+Grid,-NewGrid)	
 %row(+X,+Y,-Row)
 %sureshot(+Numbs,-SureNumbs,+Grid,-SureGrid, +Marker)
 %union(+Liste, +Liste, - Vereinigung)
+%upStream(+X,+Y,+Grid,-NewGrid)	
 %weightedToT(List,-List)
 %weightFields(+Numbers,+Grid,-Weightedgrid)
 %whiteNeighbour(+Element,Grid)
 %whiteTs(+Grid,+Numbs,-NewGrid)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %whiteNeighbour(+Element,Grid)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%blackAllTs(+Grid, -NewGrid). 
+blackAllTs([], []). 
+blackAllTs([p(f(X,Y),t)|List], [p(f(X,Y),b)|Rest]):- blackAllTs(List, Rest). 
+blackAllTs([p(f(X,Y),T)|List], [p(f(X,Y),T)|Rest]):- T\==t, blackAllTs(List, Rest). 
+
 %searches for white fields in the neighbourhood
 blackNeighbour(p(f(X,Y),T),Grid) :-bagof(Neighbour,neighbour(p(f(X,Y),T),Grid,Neighbour),Neighbours), 
 	bagof(p(f(X1,Y1),b),member(p(f(X1,Y1),b),Neighbours),Blacks), length(Blacks,B), length(Neighbours,N), N==B.
@@ -121,12 +83,35 @@ blackSureFields(List,Grid,Grid):- not(bagof(p(f(X,Y),t),(member(p(f(X,Y),t),List
 blackSureFields(List,Grid,NewGrid):- bagof(p(f(X,Y),t),(member(p(f(X,Y),t),List),blackNeighbour(p(f(X,Y),t),Grid)),Blacks),
 	listToElementBow(Blacks,Grid,b,NewGrid).
 
+%colorMaxElements(+Grid,-Grid)
+%colors the Element with the maximum vaulue
+colorMaxElements(Grid,Grid):- not(bagof(p(f(FX,FY),w(WX,WY)),(member(p(f(FX,FY),w(WX,WY)),Grid)), _)).
+colorMaxElements(Grid,NewGrid):- bagof(p(f(FX,FY),w(WX,WY)),(member(p(f(FX,FY),w(WX,WY)),Grid)), WeightedList),
+	maxInList(WeightedList,Max),
+	bagof(p(f(FX2,FY2),w(WX2,WY2)),(member(p(f(FX2,FY2),w(WX2,WY2)),WeightedList), Temp is WX2+WY2, Temp==Max), MaxList),
+	member(p(f(FX3,FY3),w(_,_)),MaxList),!,(blackOrWhite(FX3,FY3,Grid, NewGrid,b);blackOrWhite(FX3,FY3,Grid, NewGrid,w)). 
 %countWoB(+RangedNumbs,+Color,-Count)
 countWoB([],_,0).
 countWoB([p(f(_,_),Numb)|RangedNumbs],Color,Count):- Color==Numb, countWoB(RangedNumbs,Color,NewCount), Count is NewCount+1. 
 countWoB([p(f(_,_),Numb)|RangedNumbs],Color,Count):- Color\==Numb, countWoB(RangedNumbs,Color,Count).
 
+%downStream(+X,+Y,+Grid,-NewGrid)	
+downStream(X,Y,Grid,Grid) :- member(p(f(X,Y),T),Grid), T==b.
+downStream(X,Y,Grid,Grid) :- not(member(p(f(X,Y),_),Grid)).
+downStream(X,Y,Grid, Res) :- (member(p(f(X,Y),w),Grid),delete( Grid, p(f(X,Y),w),Res1);member(p(f(X,Y),t),Grid), delete( Grid, p(f(X,Y),t),Res1)),
+	X1 is X-1, X2 is X+1, Y1 is Y-1,
+	downStream(X,Y1,Res1,Res2), rightStream(X2,Y,Res2,Res3), leftStream(X1,Y,Res3,Res).
 
+%getFirtstWhite(+Edges, -Edge).
+getFirtstWhite([p(f(X,Y),w)|_], p(f(X,Y),w)).
+getFirtstWhite([p(f(_,_),T)|List], Res):- T\=w, getFirtstWhite(List, Res),!.
+
+%getWhiteSnake(+X,+Y,+Grid,-NewGrid)
+getWhiteSnake(X,Y,Grid,Grid):-member(p(f(X,Y),T),Grid), T==b.
+getWhiteSnake(X,Y,Grid,Res):-(member(p(f(X,Y),w),Grid),delete( Grid, p(f(X,Y),w),Res1);member(p(f(X,Y),t),Grid), delete( Grid, p(f(X,Y),t),Res1)), 
+	X1 is X-1, X2 is X+1, Y1 is Y-1, Y2 is Y+1,
+	upStream(X,Y2,Res1, Res2), rightStream(X2,Y,Res2, Res3), leftStream(X1,Y,Res3, Res4) ,downStream(X,Y1,Res4, Res), !.
+	
 %iBomb(M,N,Numbers, NewNumbers, Grid, NewGrid)
 %searches 100% sure fields on the playground and color them
 iBomb(_,_,[], [], Grid, Grid):-!.
@@ -181,6 +166,13 @@ iBomb(M,N,[c(f(X, Y),Count)|Numbers], [c(f(X, Y),Count)|NewNumbers], Grid, NewGr
 insertAtEnd(X,[ ],[X]).
 insertAtEnd(X,[H|T],[H|Z]) :- insertAtEnd(X,T,Z). 
 
+%leftStream(+X,+Y,+Grid,-NewGrid)	
+leftStream(X,Y,Grid,Grid) :- member(p(f(X,Y),T),Grid), T==b.
+leftStream(X,Y,Grid,Grid) :- not(member(p(f(X,Y),_),Grid)).
+leftStream(X,Y,Grid,Res) :-(member(p(f(X,Y),w),Grid),delete( Grid, p(f(X,Y),w),Res1);member(p(f(X,Y),t),Grid), delete( Grid, p(f(X,Y),t),Res1)),
+	X1 is X-1, Y1 is Y-1, Y2 is Y+1,
+	upStream(X,Y2,Res1, Res2), leftStream(X1,Y,Res2,Res3),downStream(X,Y1,Res3, Res).
+
 %listToElementBoW(+Numbers,+Grid,+Color,-NewGrid)
 %Makes out of a list single elements which can be transformed by blackOrWhite()
 listToElementBow([],Grid,_,Grid).
@@ -195,6 +187,21 @@ listToElementBow([p(f(_, _),Count)|Numbers],Grid,Color,NewGrid):- Color==w, Coun
 listToElementBow([p(f(_, _),Count)|Numbers],Grid,Color,NewGrid):- Count==Color, Color\==b, Color\==w,
 	listToElementBow(Numbers,Grid,Color,NewGrid).
 
+%loopMyGrid(+Numbers, +Grid, -NewGrid)
+loopMyGrid([],Grid, NewGrid):-whiteTs(Grid,[],WhitedGrid), 
+	((bagof(p(f(X,Y),T),(member(p(f(X,Y),t),WhitedGrid)),Ts),blackSureFields(Ts,WhitedGrid,NewGrid));
+		(not(bagof(p(f(X,Y),T),(member(p(f(X,Y),t),WhitedGrid)),_)), WhitedGrid=NewGrid)).
+loopMyGrid(Numbers,Grid, NewGrid) :- memberTgrid(Grid),length(Numbers,I), I>0,insertAtEnd(f(x, x), Numbers, EndNumbers),
+	sureshot(EndNumbers,SureNumbs,Grid,SureGrid), whiteTs(SureGrid,SureNumbs,WhitedGrid),
+	weightFields(SureNumbs,WhitedGrid,WeightedGrid), colorMaxElements(WeightedGrid,ColoredMax),
+	((bagof(p(f(X,Y),t),(member(p(f(X,Y),t),ColoredMax)),Ts),blackSureFields(Ts,ColoredMax,BlackGrid));
+		(not(bagof(p(f(X,Y),t),(member(p(f(X,Y),t),ColoredMax)),_)), BlackGrid=ColoredMax))
+	, weightedToT(BlackGrid,NewTGrid),
+	((getFirtstWhite(NewTGrid,p(f(X1,Y1),w)),
+	getWhiteSnake(X1,Y1,NewTGrid,WhiteSnake), not(member(p(f(_,_),w),WhiteSnake)));
+	(not(getFirtstWhite(NewTGrid,p(f(X1,Y1),w))),WhiteSnake = NewTGrid)),
+	loopMyGrid(SureNumbs,NewTGrid, NewGrid).
+
 %max(+Numb1,+Numb2,-Res)
 %returns the max value
 max(I,J,R):-((I>J,R=I);(J>I,R=J);(I==J,R=J)).
@@ -203,6 +210,9 @@ max(I,J,R):-((I>J,R=I);(J>I,R=J);(I==J,R=J)).
 %returns the maximum of the list
 maxInList([],0).
 maxInList([p(f(_,_),w(X,Y))|Grid],Max):- maxInList(Grid,Down), T is X+Y, max(Down,T,Max).
+
+%memberTgrid(+Grid)
+memberTgrid(Grid):-member(p(f(_,_),T),Grid), T==t, !.
 
 %myGrid(+X,+Y, -Grid)
 %Macht ein volles Grid, ohne Abstufungen
@@ -221,11 +231,11 @@ neighbour(p(f(X,Y),_),Grid,p(f(RX,RY),T)) :-X1 is X-1, X2 is X+1, Y1 is Y-1, Y2 
 %numbToFields(+Numb,+NumbFields,+Grid,-NewGrid)
 %get a Field and connect it to its weight
 numbToFields(_,[],Grid,Grid).
-numbToFields(U,[p(f(X,Y),T)|NumbFields],Grid,NewGrid):-T==t, D is U*2,
+numbToFields(U,[p(f(X,Y),T)|NumbFields],Grid,NewGrid):-T==t, D is U*1,
 	bagof(Neighbour,(neighbour(p(f(X,Y),T),Grid,Neighbour)),Neighbours), countWoB(Neighbours,w,WhiteCount),
 	countWoB(Neighbours,b,BlackCount), length(Neighbours, Fields), Res is 4-Fields+BlackCount-WhiteCount,
 	blackOrWhite(X,Y,Grid,Grid1, w(D,Res)), numbToFields(D,NumbFields,Grid1,NewGrid).
-numbToFields(U,[p(f(X,Y),w(WX,WY))|NumbFields],Grid,NewGrid):- D is U*2,
+numbToFields(U,[p(f(X,Y),w(WX,WY))|NumbFields],Grid,NewGrid):- D is U*1,
 	WR is D+WX,blackOrWhite(X,Y,Grid,Grid1, w(WR,WY)), numbToFields(D,NumbFields,Grid1,NewGrid).
 numbToFields(D,[p(f(_,_),T)|NumbFields],Grid,NewGrid):-(T==b;T==w),numbToFields(D,NumbFields,Grid,NewGrid).
 
@@ -234,6 +244,13 @@ numbToFields(D,[p(f(_,_),T)|NumbFields],Grid,NewGrid):-(T==b;T==w),numbToFields(
 rangeInNumbs(p(f(X,Y),_),Numbs, c(f(X,Y),T)):- member(c(f(X,Y),T),Numbs).
 rangeInNumbs(p(f(X,Y),_),Numbs, c(f(A,B),T)):- not(member(c(f(X,Y),_),Numbs)),X1 is X-1, Y1 is Y-1, ((member(c(f(X1,Y),T),Numbs), X1=A, Y=B);
 	(member(c(f(X,Y1),T),Numbs), X=A,Y1=B);(member(c(f(X1,Y1),_),Numbs),X1=A,Y1=B)).
+
+%rightStream(+X,+Y,+Grid,-NewGrid)	
+rightStream(X,Y,Grid,Grid) :- member(p(f(X,Y),T),Grid), T==b.
+rightStream(X,Y,Grid,Grid) :- not(member(p(f(X,Y),_),Grid)).
+rightStream(X,Y,Grid,Res) :-(member(p(f(X,Y),w),Grid),delete( Grid, p(f(X,Y),w),Res1);member(p(f(X,Y),t),Grid), delete( Grid, p(f(X,Y),t),Res1)),
+	 X2 is X+1, Y1 is Y-1, Y2 is Y+1,
+	upStream(X,Y2,Res1, Res2), rightStream(X2,Y,Res2,Res3),downStream(X,Y1,Res3, Res).
 
 %row(+X,+Y,-Row)
 row(X,Y,[]) :- ((X==Y, X=<0);(X=<0); (Y=<0)).
@@ -286,6 +303,13 @@ union([A|B], C, D) :- member(A,C), !, union(B,C,D).
 union([A|B], C, [A|D]) :- union(B,C,D).
 union([],Z,Z).
 
+%upStream(+X,+Y,+Grid,-NewGrid)	
+upStream(X,Y,Grid,Grid) :- member(p(f(X,Y),T),Grid), T==b.
+upStream(X,Y,Grid,Grid) :- not(member(p(f(X,Y),_),Grid)).
+upStream(X,Y,Grid, Res) :- (member(p(f(X,Y),w),Grid),delete( Grid, p(f(X,Y),w),Res1);member(p(f(X,Y),t),Grid), delete( Grid, p(f(X,Y),t),Res1)),
+	 X1 is X-1, X2 is X+1, Y1 is Y+1,
+	upStream(X,Y1,Res1,Res2), rightStream(X2,Y,Res2,Res3), leftStream(X1,Y,Res3,Res).
+	
 %weightedToT(List,-List)
 %change the weighted Fields back to Ts
 weightedToT([],[]).
